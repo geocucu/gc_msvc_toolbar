@@ -2,13 +2,12 @@
 #define __COMMANDIDS_H_
 
 
-// Menu groups 
-#define test_menu_group 0x1020
+#define CID_toolbar 0x200
+#define CID_toolbar_group 0x200
 
-// Commands 
-#define CMDID_test_btn 0x100
+#define CMDID_cmdline_args_control 0x100
+#define CMDID_cmdline_args 0x101
 
-// Bitmaps 
 #define bmpPic1 1
 #define bmpPic2 2
 #define bmpPicSearch 3

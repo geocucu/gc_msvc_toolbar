@@ -146,24 +146,24 @@ __if_exists(_GetAttrEntries) {
 	static CommandHandler *GetCommand(const VSL::CommandId &target_id) {
 		// Command map specific to this package
 		// Combined command id: cmdset GUID & ID within cmdset
-		static VSL::CommandId id_test_btn(CLSID_cmdset, CMDID_test_btn);
-		static CommandHandler test_btn_handler(id_test_btn, 0, &on_test_btn);
+		static VSL::CommandId id_cmdline_args_control(CLSID_cmdset, CMDID_cmdline_args_control);
+		static CommandHandler cmdline_args_handler(id_cmdline_args_control, 0, &on_cmdline_args);
 
-		if (target_id == id_test_btn) {
-			return &test_btn_handler;
+		if (target_id == id_cmdline_args_control) {
+			return &cmdline_args_handler;
 		}
 
 		return 0;
 	}
 
-	void on_test_btn(CommandHandler *sender, DWORD flags, VARIANT *in, VARIANT *out) {
+	void on_cmdline_args(CommandHandler *sender, DWORD flags, VARIANT *in, VARIANT *out) {
 		CComPtr<IVsUIShell> vs_ui_shell = this->GetVsSiteCache().GetCachedService<IVsUIShell, IID_IVsUIShell>();
 		LONG lResult;
 		HRESULT hr = vs_ui_shell->ShowMessageBox(
 			0,
 			GUID_NULL,
 			L"gc_msvc_toolbar",
-			L"Hello",
+			in->bstrVal,
 			0,
 			0,
 			OLEMSGBUTTON_OK,

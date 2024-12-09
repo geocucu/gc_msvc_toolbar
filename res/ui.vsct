@@ -16,22 +16,32 @@
 <Extern href="guids.h"/>
 
 <!-- ================ COMMANDS ================ -->
-<Commands package="GUID_pkg"> 
+<Commands package="GUID_pkg">
+  <Menus>
+    <Menu guid="GUID_cmdset" id="CID_toolbar" type="Toolbar">
+      <CommandFlag>DefaultDocked</CommandFlag>
+      <Strings>
+        <ButtonText>GC MSVC Toolbar</ButtonText>
+        <CommandName>GC MSVC Toolbar</CommandName>
+      </Strings>
+    </Menu>
+  </Menus>
+  
   <Groups>
-    <Group guid="GUID_cmdset" id="test_menu_group" priority="0x0600">
-      <Parent guid="guidSHLMainMenu" id="IDM_VS_MENU_TOOLS"/>
+    <Group guid="GUID_cmdset" id="CID_toolbar_group" priority="0x0000">
+      <Parent guid="GUID_cmdset" id="CID_toolbar"/>
     </Group>
   </Groups>
 
-  <Buttons>
-    <Button guid="GUID_cmdset" id="CMDID_test_btn" priority="0x0100" type="Button">
-      <Parent guid="GUID_cmdset" id="test_menu_group" />
-      <Icon guid="GUID_img" id="bmpPic1" />
+  <Combos>
+    <Combo guid="GUID_cmdset" id="CMDID_cmdline_args_control" defaultWidth="100" idCommandList="CMDID_cmdline_args" type="MRUCombo">
+      <Parent guid="GUID_cmdset" id="CID_toolbar_group" />
+      <CommandFlag>StretchHorizontally</CommandFlag>
       <Strings>
-        <ButtonText>Click me</ButtonText>
+        <ButtonText>None</ButtonText>
       </Strings>
-    </Button>
-  </Buttons>
+    </Combo>
+  </Combos>
 
   <Bitmaps>
     <Bitmap guid="GUID_img" href="images.png" usedList="bmpPic1, bmpPic2, bmpPicSearch, bmpPicX, bmpPicArrows"/>

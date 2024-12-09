@@ -3,7 +3,7 @@
     <Metadata>
         <Identity Id="d6cbff0b-ce7e-4205-9e41-869492cfb46e" Version="1.0" Language="en-US" Publisher="geocucu" />
         <DisplayName>gc_msvc_toolbar</DisplayName>
-        <Description xml:space="preserve">Boilerplate for C++ based Visual Studio extensions.</Description>
+        <Description xml:space="preserve">Visual Studio toolbar with quick access utils for MSVC projects.</Description>
         <Icon>res\package.ico</Icon>
     </Metadata>
     <Installation>
