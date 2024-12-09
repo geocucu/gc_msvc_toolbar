@@ -1,0 +1,17 @@
+[$RootKey$\Packages\{b54a9fb7-1a9a-4c85-b783-83dd1a81e0b2}]
+@="gc_msvc_toolbar Package"
+"InprocServer32"="$PackageFolder$\gc_msvc_toolbar.dll"
+
+[$RootKey$\Packages\{b54a9fb7-1a9a-4c85-b783-83dd1a81e0b2}\SatelliteDll]
+"DllName"="vsct.dll"
+"Path"="$PackageFolder$"
+
+[$RootKey$\Menus]
+"{b54a9fb7-1a9a-4c85-b783-83dd1a81e0b2}"=", 1000, 1"
+
+[$RootKey$\InstalledProducts\gc_msvc_toolbar]
+@="#100"
+"Package"="{b54a9fb7-1a9a-4c85-b783-83dd1a81e0b2}"
+"UseInterface"=dword:00000000
+
+

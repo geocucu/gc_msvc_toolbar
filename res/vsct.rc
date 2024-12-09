@@ -1,0 +1,7 @@
+STRINGTABLE
+BEGIN
+  100                        "gc_msvc_toolbar"
+END
+
+1000               CTMENU    "ui.cto"
+

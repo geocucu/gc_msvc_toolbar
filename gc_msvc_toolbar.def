@@ -1,0 +1,5 @@
+LIBRARY      "gc_msvc_toolbar.DLL"
+
+EXPORTS
+	DllCanUnloadNow            PRIVATE
+	DllGetClassObject          PRIVATE
