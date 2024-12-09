@@ -175,6 +175,11 @@ __if_exists(_GetAttrEntries) {
 		// VSL::FailOnError<VSL::HRESULTTraits>::Invoke(hr);
 	}
 
+
+  pkg_t() {
+    //
+  }
+
 	// ================================ Interesting non-boilerplate END ================================
 };
 
