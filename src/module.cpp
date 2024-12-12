@@ -54,6 +54,8 @@
 // ======== GUIDs/IDs ======== 
 #include "..\res\resource.h"
 
+#include "vsix_interfaces.h"
+
 
 typedef unsigned long long u64;
 typedef long long i64;
@@ -141,6 +143,31 @@ __if_exists(_GetAttrEntries) {
 	// DLL is registered with VS via a pkgdef file. Don't do anything if asked to self-register.
 	static HRESULT UpdateRegistry(BOOL bRegister) { return S_OK; }
 
+	static void msgbox_hresult(HRESULT hr, const wchar_t *format, ...) {
+		wchar_t error_msg[512] = {};
+		wchar_t system_message[256] = {};
+		wchar_t custom_message[256] = {};
+
+		FormatMessageW(
+			FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+			0,
+			hr,
+			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+			system_message,
+			sizeof(system_message) / sizeof(wchar_t),
+			0
+		);
+
+		va_list args;
+		va_start(args, format);
+		vswprintf_s(custom_message, sizeof(custom_message) / sizeof(wchar_t), format, args);
+		va_end(args);
+
+		swprintf_s(error_msg, sizeof(error_msg) / sizeof(wchar_t), L"%s\nHRESULT: 0x%08X\n%s", custom_message, hr, system_message);
+
+		MessageBoxW(0, error_msg, L"[Error] GC MSVC Toolbar", MB_ICONERROR | MB_OK);
+	}
+
 	// ================================ Interesting non-boilerplate START ================================
 
 	static CommandHandler *GetCommand(const VSL::CommandId &target_id) {
@@ -157,28 +184,165 @@ __if_exists(_GetAttrEntries) {
 	}
 
 	void on_cmdline_args(CommandHandler *sender, DWORD flags, VARIANT *in, VARIANT *out) {
-		CComPtr<IVsUIShell> vs_ui_shell = this->GetVsSiteCache().GetCachedService<IVsUIShell, IID_IVsUIShell>();
-		LONG lResult;
-		HRESULT hr = vs_ui_shell->ShowMessageBox(
-			0,
-			GUID_NULL,
-			L"gc_msvc_toolbar",
-			in->bstrVal,
-			0,
-			0,
-			OLEMSGBUTTON_OK,
-			OLEMSGDEFBUTTON_FIRST,
-			OLEMSGICON_INFO,
-			0,
-			&lResult);
+		if (!marshaled_startup_proj_stream) {
+			msgbox_hresult(E_POINTER, L"No valid marshaled startup project available");
+			return;
+		}
 
-		// VSL::FailOnError<VSL::HRESULTTraits>::Invoke(hr);
+		HRESULT hr = S_OK;
+
+		// Duplicate the stream for reuse
+		IStream *duplicate_stream = 0;
+		hr = CreateStreamOnHGlobal(0, TRUE, &duplicate_stream);
+		if (FAILED(hr)) {
+			msgbox_hresult(hr, L"Failed to create duplicate stream");
+			return;
+		}
+
+		// Copy the original stream to the duplicate
+		LARGE_INTEGER seek_start = {};
+		ULARGE_INTEGER stream_size = {};
+		marshaled_startup_proj_stream->Seek(seek_start, STREAM_SEEK_END, &stream_size);
+		marshaled_startup_proj_stream->Seek(seek_start, STREAM_SEEK_SET, 0);
+
+		hr = marshaled_startup_proj_stream->CopyTo(duplicate_stream, stream_size, 0, 0);
+		if (FAILED(hr)) {
+			msgbox_hresult(hr, L"Failed to copy to duplicate stream");
+			duplicate_stream->Release();
+			return;
+		}
+
+		marshaled_startup_proj_stream->Seek(seek_start, STREAM_SEEK_SET, 0);
+		duplicate_stream->Seek(seek_start, STREAM_SEEK_SET, 0);
+
+		// Unmarshal the interface from the duplicate stream
+		CComPtr<IVsHierarchy> startup_proj;
+		hr = CoGetInterfaceAndReleaseStream(duplicate_stream, IID_IVsHierarchy, (void **)&startup_proj);
+		if (FAILED(hr)) {
+			msgbox_hresult(hr, L"Failed to unmarshal IVsHierarchy from duplicate stream");
+			return;
+		}
+
+		// Interact with the unmarshaled IVsHierarchy
+		CComPtr<IVsBuildPropertyStorage> prop_storage;
+		hr = startup_proj->QueryInterface(IID_IVsBuildPropertyStorage, (void **)&prop_storage);
+		if (FAILED(hr)) {
+			msgbox_hresult(hr, L"Failed to query IVsBuildPropertyStorage from IVsHierarchy");
+			return;
+		}
+
+		// == TODO: HARDCODED == 
+
+		prop_storage->SetPropertyValue(
+			L"LocalDebuggerCommandArguments",
+			L"Debug|x64",
+			PST_PROJECT_FILE,
+			in->bstrVal
+		);
 	}
 
+	// Init VSPackage
+	// https://learn.microsoft.com/en-us/dotnet/api/microsoft.visualstudio.shell.interop.ivspackage.setsite?view=visualstudiosdk-2022
+	HRESULT __stdcall SetSite(IServiceProvider *service_provider) override {
+		// Also called on VsSiteBaseImpl::Close (not documented)
+		if (!service_provider) {
+			return S_OK;
+		}
 
-  pkg_t() {
-    //
-  }
+		HRESULT hr = S_OK;
+
+		hr = service_provider->QueryService(IID_IVsUIShell, IID_IVsUIShell, (void **)&services.ui_shell);
+		if (FAILED(hr)) {
+			msgbox_hresult(hr, L"Failed retrieving service: VS UI shell");
+			return hr;
+		}
+
+		hr = service_provider->QueryService(IID_IVsSolution, IID_IVsSolution, (void **)&services.solution);
+		if (FAILED(hr)) {
+			msgbox_hresult(hr, L"Failed retrieving service: Solution");
+			return hr;
+		}
+
+		hr = service_provider->QueryService(IID_IVsSolutionBuildManager, IID_IVsSolutionBuildManager, (void **)&services.build_manager);
+		if (FAILED(hr)) {
+			msgbox_hresult(hr, L"Failed retrieving service: Build Manager");
+			return hr;
+		}
+
+		query_projects();
+		query_startup_proj();
+
+		return VSL::IVsPackageImpl<pkg_t, &CLSID_pkg>::SetSite(service_provider);
+	}
+
+	void query_projects() {
+		// == TODO: DELETE ==
+
+		//CComPtr<IEnumHierarchies> enum_hierarchies;
+		//services.solution->GetProjectEnum(__VSENUMPROJFLAGS::EPF_LOADEDINSOLUTION, GUID_NULL, &enum_hierarchies);
+
+		//IVsHierarchy *hierarchy = 0;
+		//ULONG fetched = 0;
+		//while (enum_hierarchies->Next(1, &hierarchy, &fetched) == S_OK && fetched > 0) {
+		//	CComVariant projname;
+		//	hierarchy->GetProperty(VSITEMID_ROOT, VSHPROPID_Name, &projname);
+
+		//	MessageBoxW(0, projname.bstrVal, L"Found project", MB_OK);
+
+		//	hierarchy->Release();
+		//}
+	}
+
+	void query_startup_proj() {
+		CComPtr<IVsHierarchy> startup_proj;
+		HRESULT hr = services.build_manager->get_StartupProject(&startup_proj);
+		if (FAILED(hr)) {
+			return;
+		}
+
+		// == TODO: DELETE ==
+		
+		//CComPtr<IVsBuildPropertyStorage> prop_storage;
+		//hr = startup_proj->QueryInterface(__uuidof(IVsBuildPropertyStorage), (void **)&prop_storage);
+		//if (FAILED(hr) || !prop_storage) {
+		//	msgbox_hresult(hr, L"Failed to query IVsBuildPropertyStorage from IVsHierarchy");
+		//	return;
+		//}
+
+		//CComBSTR original_value;
+		//hr = prop_storage->GetPropertyValue(
+		//	L"LocalDebuggerCommandArguments",
+		//	L"Debug|x64",
+		//	PST_PROJECT_FILE,
+		//	&original_value
+		//);
+
+		// Create a stream to marshal the interface
+		hr = CoMarshalInterThreadInterfaceInStream(IID_IVsHierarchy, startup_proj, &marshaled_startup_proj_stream);
+		if (FAILED(hr)) {
+			msgbox_hresult(hr, L"Failed to marshal IVsHierarchy to a stream");
+			return;
+		}
+
+		// == TODO: DELETE == 
+		CComVariant proj_name;
+		hr = startup_proj->GetProperty(VSITEMID_ROOT, VSHPROPID_Name, &proj_name);
+		if (SUCCEEDED(hr)) {
+			MessageBoxW(nullptr, proj_name.bstrVal, L"Startup Project", MB_OK);
+		}
+	}
+
+	// ================= DATA =================
+
+	// Service cache 
+	struct {
+		CComPtr<IVsUIShell> ui_shell;
+		CComPtr<IVsSolution> solution;
+		CComPtr<IVsSolutionBuildManager> build_manager;
+	} services;
+
+	// Don't wrap! Stream will be released by COM internally. 
+	IStream *marshaled_startup_proj_stream = 0;
 
 	// ================================ Interesting non-boilerplate END ================================
 };
@@ -193,7 +357,6 @@ struct dll_module_t : CAtlDllModuleT<dll_module_t> {} dll_module;
 
 extern "C" BOOL DllMain(HINSTANCE, DWORD reason, void *) {
 	if (reason == DLL_THREAD_ATTACH && CAtlBaseModule::m_bInitFailed) {
-		__debugbreak();
 		return 0;
 	}
 

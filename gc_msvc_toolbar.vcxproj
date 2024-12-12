@@ -143,6 +143,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\vsix_interfaces.h" />
     <None Include="res\ui.vsct" />
     <None Include="res\vsct.rc" />
     <None Include="gc_msvc_toolbar.def" />
@@ -172,4 +173,3 @@
     <Exec Command="link /NOLOGO /NOENTRY /DLL /OUT:&quot;$(OutDir)vsct.dll&quot; &quot;$(IntDir)vsct.res&quot;" />
   </Target>
 </Project>
-
