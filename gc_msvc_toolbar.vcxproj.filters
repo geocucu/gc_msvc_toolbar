@@ -65,7 +65,7 @@
     <None Include="docs\DTE_proj_property_names.md">
       <Filter>docs</Filter>
     </None>
-    <None Include="docs\vcproject_build_config_properties.md">
+    <None Include="docs\props_debugging.md">
       <Filter>docs</Filter>
     </None>
     <None Include="docs\IVs_snippets.md">

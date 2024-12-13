@@ -146,7 +146,7 @@
     <ClInclude Include="src\vsix_interfaces.h" />
     <None Include="docs\DTE_proj_property_names.md" />
     <None Include="docs\IVs_snippets.md" />
-    <None Include="docs\vcproject_build_config_properties.md" />
+    <None Include="docs\props_debugging.md" />
     <None Include="res\ui.vsct" />
     <None Include="res\vsct.rc" />
     <None Include="gc_msvc_toolbar.def" />

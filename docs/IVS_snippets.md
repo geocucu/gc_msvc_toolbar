@@ -4,14 +4,14 @@
 
 ### IVsSolution
 
-1. Get the service 
+#### 1. Get the service  
 
 ```C++
 IVsSolution *solution;
 service_provider->QueryService(IID_IVsSolution, IID_IVsSolution, (void **)&solution);
 ```
 
-2. Enumerate loaded projects (`IVsHierarchy*`)
+#### 2. Enumerate loaded projects (`IVsHierarchy*`)  
 
 ```C++
 IEnumHierarchies *enum_hierarchies;
@@ -55,22 +55,24 @@ startup_proj->GetProperty(VSITEMID_ROOT, VSHPROPID_Name, &proj_name);
 ```
 
 #### 4. Query a configuration property. 
+
 Neither `Microsoft.VisualStudio.VCProject.xml` nor `Microsoft.VisualStudio.VCProjectEngine.xml` contain all possible names. 
-Have to pick from the generated `*.vcxproj` or `*.vcxproj.user`, or straight from the MSBuild config XMLs in the VS install dir.
+Have to pick from the generated `*.vcxproj` or `*.vcxproj.user`, or straight from the MSBuild config XMLs in the VS install dir.  
 
-Argument 2 (`pszConfigName`) is actually `config_name|platform_name`, with the pipe separator and no spaces.
+Argument 2 (`pszConfigName`) is actually `config_name|platform_name`, with the pipe separator and no spaces.  
 
-Argument 3 (`storage`) is either `PST_PROJECT_FILE` or `PST_USER_FILE`. 
+Argument 3 (`storage`) is either `PST_PROJECT_FILE` or `PST_USER_FILE`.
 Corresponds to either the `*.vcxproj` or `*.vcxproj.user` files.
 It doesn't seem to matter (just passing `PST_PROJECT_FILE` is fine).
 However, there are corresponding tags in the MSBuild config XMLs:
+
 ```XML
 <Rule.DataSource> 
   <DataSource Persistence="UserFile" /> 
 </Rule.DataSource>
 ```
 
-Example:
+Example:  
 
 ```C++
 IVsBuildPropertyStorage *prop_storage;
