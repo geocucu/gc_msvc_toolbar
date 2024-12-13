@@ -6,6 +6,8 @@
 #include <dte90a.h>
 #include <dte100.h>
 
+// ==== TODO: DELETE? ====
+// It's probably fine to stick to the IVs[...] interfaces, and not need DTE at all. 
 
 namespace vsix {
 	struct _DTE;

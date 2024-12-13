@@ -269,67 +269,20 @@ __if_exists(_GetAttrEntries) {
 			return hr;
 		}
 
-		query_projects();
-		query_startup_proj();
-
-		return VSL::IVsPackageImpl<pkg_t, &CLSID_pkg>::SetSite(service_provider);
-	}
-
-	void query_projects() {
-		// == TODO: DELETE ==
-
-		//CComPtr<IEnumHierarchies> enum_hierarchies;
-		//services.solution->GetProjectEnum(__VSENUMPROJFLAGS::EPF_LOADEDINSOLUTION, GUID_NULL, &enum_hierarchies);
-
-		//IVsHierarchy *hierarchy = 0;
-		//ULONG fetched = 0;
-		//while (enum_hierarchies->Next(1, &hierarchy, &fetched) == S_OK && fetched > 0) {
-		//	CComVariant projname;
-		//	hierarchy->GetProperty(VSITEMID_ROOT, VSHPROPID_Name, &projname);
-
-		//	MessageBoxW(0, projname.bstrVal, L"Found project", MB_OK);
-
-		//	hierarchy->Release();
-		//}
-	}
-
-	void query_startup_proj() {
 		CComPtr<IVsHierarchy> startup_proj;
-		HRESULT hr = services.build_manager->get_StartupProject(&startup_proj);
+		hr = services.build_manager->get_StartupProject(&startup_proj);
 		if (FAILED(hr)) {
-			return;
+			return hr;
 		}
-
-		// == TODO: DELETE ==
-		
-		//CComPtr<IVsBuildPropertyStorage> prop_storage;
-		//hr = startup_proj->QueryInterface(__uuidof(IVsBuildPropertyStorage), (void **)&prop_storage);
-		//if (FAILED(hr) || !prop_storage) {
-		//	msgbox_hresult(hr, L"Failed to query IVsBuildPropertyStorage from IVsHierarchy");
-		//	return;
-		//}
-
-		//CComBSTR original_value;
-		//hr = prop_storage->GetPropertyValue(
-		//	L"LocalDebuggerCommandArguments",
-		//	L"Debug|x64",
-		//	PST_PROJECT_FILE,
-		//	&original_value
-		//);
 
 		// Create a stream to marshal the interface
 		hr = CoMarshalInterThreadInterfaceInStream(IID_IVsHierarchy, startup_proj, &marshaled_startup_proj_stream);
 		if (FAILED(hr)) {
 			msgbox_hresult(hr, L"Failed to marshal IVsHierarchy to a stream");
-			return;
+			return hr;
 		}
 
-		// == TODO: DELETE == 
-		CComVariant proj_name;
-		hr = startup_proj->GetProperty(VSITEMID_ROOT, VSHPROPID_Name, &proj_name);
-		if (SUCCEEDED(hr)) {
-			MessageBoxW(nullptr, proj_name.bstrVal, L"Startup Project", MB_OK);
-		}
+		return VSL::IVsPackageImpl<pkg_t, &CLSID_pkg>::SetSite(service_provider);
 	}
 
 	// ================= DATA =================
