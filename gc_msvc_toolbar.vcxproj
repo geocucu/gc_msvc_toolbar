@@ -143,7 +143,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\ivs_interfaces.h" />
     <ClInclude Include="src\vsix_interfaces.h" />
+    <None Include="docs\behaviour.md" />
     <None Include="docs\DTE_proj_property_names.md" />
     <None Include="docs\IVs_snippets.md" />
     <None Include="docs\props_debugging.md" />

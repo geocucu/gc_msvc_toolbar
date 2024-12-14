@@ -55,6 +55,7 @@
 #include "..\res\resource.h"
 
 #include "vsix_interfaces.h"
+#include "ivs_interfaces.h"
 
 
 typedef unsigned long long u64;
@@ -216,16 +217,16 @@ __if_exists(_GetAttrEntries) {
 		duplicate_stream->Seek(seek_start, STREAM_SEEK_SET, 0);
 
 		// Unmarshal the interface from the duplicate stream
-		CComPtr<IVsHierarchy> startup_proj;
-		hr = CoGetInterfaceAndReleaseStream(duplicate_stream, IID_IVsHierarchy, (void **)&startup_proj);
+		CComPtr<vsix::IVsHierarchy> startup_proj;
+		hr = CoGetInterfaceAndReleaseStream(duplicate_stream, vsix::IID_IVsHierarchy, (void **)&startup_proj);
 		if (FAILED(hr)) {
 			msgbox_hresult(hr, L"Failed to unmarshal IVsHierarchy from duplicate stream");
 			return;
 		}
 
 		// Interact with the unmarshaled IVsHierarchy
-		CComPtr<IVsBuildPropertyStorage> prop_storage;
-		hr = startup_proj->QueryInterface(IID_IVsBuildPropertyStorage, (void **)&prop_storage);
+		CComPtr<vsix::IVsBuildPropertyStorage> prop_storage;
+		hr = startup_proj->QueryInterface(vsix::IID_IVsBuildPropertyStorage, (void **)&prop_storage);
 		if (FAILED(hr)) {
 			msgbox_hresult(hr, L"Failed to query IVsBuildPropertyStorage from IVsHierarchy");
 			return;
@@ -236,7 +237,7 @@ __if_exists(_GetAttrEntries) {
 		prop_storage->SetPropertyValue(
 			L"LocalDebuggerCommandArguments",
 			L"Debug|x64",
-			PST_PROJECT_FILE,
+			PST_USER_FILE,
 			in->bstrVal
 		);
 	}
@@ -251,32 +252,32 @@ __if_exists(_GetAttrEntries) {
 
 		HRESULT hr = S_OK;
 
-		hr = service_provider->QueryService(IID_IVsUIShell, IID_IVsUIShell, (void **)&services.ui_shell);
+		hr = service_provider->QueryService(vsix::IID_IVsUIShell, vsix::IID_IVsUIShell, (void **)&services.ui_shell);
 		if (FAILED(hr)) {
 			msgbox_hresult(hr, L"Failed retrieving service: VS UI shell");
 			return hr;
 		}
 
-		hr = service_provider->QueryService(IID_IVsSolution, IID_IVsSolution, (void **)&services.solution);
+		hr = service_provider->QueryService(vsix::IID_IVsSolution, vsix::IID_IVsSolution, (void **)&services.solution);
 		if (FAILED(hr)) {
 			msgbox_hresult(hr, L"Failed retrieving service: Solution");
 			return hr;
 		}
 
-		hr = service_provider->QueryService(IID_IVsSolutionBuildManager, IID_IVsSolutionBuildManager, (void **)&services.build_manager);
+		hr = service_provider->QueryService(vsix::IID_IVsSolutionBuildManager, vsix::IID_IVsSolutionBuildManager, (void **)&services.build_manager);
 		if (FAILED(hr)) {
 			msgbox_hresult(hr, L"Failed retrieving service: Build Manager");
 			return hr;
 		}
 
-		CComPtr<IVsHierarchy> startup_proj;
+		vsix::IVsHierarchy *startup_proj;
 		hr = services.build_manager->get_StartupProject(&startup_proj);
 		if (FAILED(hr)) {
 			return hr;
 		}
 
 		// Create a stream to marshal the interface
-		hr = CoMarshalInterThreadInterfaceInStream(IID_IVsHierarchy, startup_proj, &marshaled_startup_proj_stream);
+		hr = CoMarshalInterThreadInterfaceInStream(vsix::IID_IVsHierarchy, (IUnknown*)startup_proj, &marshaled_startup_proj_stream);
 		if (FAILED(hr)) {
 			msgbox_hresult(hr, L"Failed to marshal IVsHierarchy to a stream");
 			return hr;
@@ -289,9 +290,9 @@ __if_exists(_GetAttrEntries) {
 
 	// Service cache 
 	struct {
-		CComPtr<IVsUIShell> ui_shell;
-		CComPtr<IVsSolution> solution;
-		CComPtr<IVsSolutionBuildManager> build_manager;
+		CComPtr<vsix::IVsUIShell> ui_shell;
+		CComPtr<vsix::IVsSolution> solution;
+		CComPtr<vsix::IVsSolutionBuildManager> build_manager;
 	} services;
 
 	// Don't wrap! Stream will be released by COM internally. 

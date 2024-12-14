@@ -29,6 +29,9 @@
     <ClInclude Include="src\vsix_interfaces.h">
       <Filter>headers</Filter>
     </ClInclude>
+    <ClInclude Include="src\ivs_interfaces.h">
+      <Filter>headers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\module.cpp">
@@ -69,6 +72,9 @@
       <Filter>docs</Filter>
     </None>
     <None Include="docs\IVs_snippets.md">
+      <Filter>docs</Filter>
+    </None>
+    <None Include="docs\behaviour.md">
       <Filter>docs</Filter>
     </None>
   </ItemGroup>
