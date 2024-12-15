@@ -57,7 +57,6 @@
 #include "vsix_interfaces.h"
 #include "ivs_interfaces.h"
 
-
 typedef unsigned long long u64;
 typedef long long i64;
 

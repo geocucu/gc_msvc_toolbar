@@ -9,8 +9,10 @@ file matches the "canonical" persistence.
 
 Changes in the project property sheet followed by "Apply/OK" will immediately be saved to disk, to the file 
 corresponding to the project's canonical persistence ("user"/"project").  
-Hence monitoring the files directly is a possible choice for monitoring changes to the project configuration. 
-Risky, but the alternative (`IVs[...]Events`) interfaces make me not care right now. 
+
+Monitoring the files directly is a possible choice for monitoring changes to the project configuration. 
+Risky, but the alternative (`IVs[...]Events`) interfaces make me not care right now.  
+Alternatively, try DTE for update notifications, and IVs* for property getters/setters (which are broken for DTE).
 
 #### Startup Project
 
