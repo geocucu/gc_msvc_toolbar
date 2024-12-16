@@ -86,10 +86,3 @@ prop_storage->GetPropertyValue(
 	&original_value
 );
 ```
-
-5. Marshaling 
-
-```C++
-// IStream *stream;
-CoMarshalInterThreadInterfaceInStream(IID_IVsHierarchy, startup_proj, &stream);
-```

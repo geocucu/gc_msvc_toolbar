@@ -56,9 +56,186 @@
 
 #include "vsix_interfaces.h"
 #include "ivs_interfaces.h"
+#include <functional>
 
 typedef unsigned long long u64;
 typedef long long i64;
+
+#ifdef _DEBUG
+#define DEBUGBREAK __debugbreak();
+#else 
+#define DEBUGBREAK 
+#endif 
+
+// Also wrap in the HRESULT var. Use the watch window for the code. 
+#define HRCALL_NORET(x, msg) { \
+  HRESULT hr = x; \
+  if (FAILED(hr)) { msgbox_hresult(hr, msg); DEBUGBREAK } }
+
+#define HRCALL(x, msg) { \
+  HRESULT hr = x; \
+  if (FAILED(hr)) { msgbox_hresult(hr, msg); DEBUGBREAK; return hr; } }
+
+void msgbox_hresult(HRESULT hr, const wchar_t *format, ...) {
+	wchar_t error_msg[512] = {};
+	wchar_t system_message[256] = {};
+	wchar_t custom_message[256] = {};
+
+	FormatMessageW(
+		FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+		0,
+		hr,
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		system_message,
+		sizeof(system_message) / sizeof(wchar_t),
+		0
+	);
+
+	va_list args;
+	va_start(args, format);
+	vswprintf_s(custom_message, sizeof(custom_message) / sizeof(wchar_t), format, args);
+	va_end(args);
+
+	swprintf_s(error_msg, sizeof(error_msg) / sizeof(wchar_t), L"%s\nHRESULT: 0x%08X\n%s", custom_message, hr, system_message);
+
+	MessageBoxW(0, error_msg, L"[Error] GC MSVC Toolbar", MB_ICONERROR | MB_OK);
+}
+
+struct {
+	IServiceProvider *provider;
+	CComPtr<IVsTaskSchedulerService> task_scheduler;
+} vs_services;
+
+struct task_body_t : CComObjectRootEx<CComSingleThreadModel>, IVsTaskBody {
+	std::function<HRESULT(VARIANT *pResult)> task_logic;
+
+	BEGIN_COM_MAP(task_body_t)
+		COM_INTERFACE_ENTRY(IVsTaskBody)
+	END_COM_MAP()
+
+	task_body_t() : task_logic([](VARIANT *) -> HRESULT { return S_OK; }) {}
+	task_body_t(const std::function<HRESULT(VARIANT *pResult)> &logic) : task_logic(logic) {}
+
+	HRESULT __stdcall DoWork(IVsTask *pTask, DWORD dwCount, IVsTask **pParentTasks, VARIANT *pResult) override {
+		if (!pResult) {
+			return E_POINTER; 
+		}
+
+		VariantInit(pResult); 
+		if (task_logic) {
+			return task_logic(pResult);
+		}
+		return S_OK; 
+	}
+
+	static CComPtr<IVsTaskBody> create(const std::function<HRESULT(VARIANT *pResult)> &logic) {
+		CComPtr<IVsTaskBody> task_body;
+		CComObject<task_body_t> *raw_body = nullptr;
+		HRESULT hr = CComObject<task_body_t>::CreateInstance(&raw_body);
+		if (SUCCEEDED(hr) && raw_body) {
+			raw_body->AddRef();
+			raw_body->task_logic = logic;
+			task_body.Attach(raw_body);
+		}
+		return task_body;
+	}
+};
+
+// ================================ COMMANDLINE ARGS COMBO BOX ================================
+
+HRESULT on_cmdline_args_body(VARIANT *result) {
+	CComPtr<vsix::IVsSolutionBuildManager> build_manager;
+	HRCALL(
+		vs_services.provider->QueryService(vsix::IID_IVsSolutionBuildManager, vsix::IID_IVsSolutionBuildManager, (void **)&build_manager),
+		L"Failed to retrieve IVsSolutionBuildManager");
+
+	CComPtr<vsix::IVsHierarchy> startup_proj;
+	HRCALL(
+		build_manager->get_StartupProject(&startup_proj),
+		L"Failed to get startup project");
+
+	CComPtr<vsix::IVsBuildPropertyStorage> prop_storage;
+	HRCALL(
+		startup_proj->QueryInterface(vsix::IID_IVsBuildPropertyStorage, (void **)&prop_storage),
+		L"Failed to query IVsBuildPropertyStorage from IVsHierarchy");
+
+	HRCALL(
+		prop_storage->SetPropertyValue(
+		L"LocalDebuggerCommandArguments",
+		L"Debug|x64",
+		PST_USER_FILE,
+		L"DUMMY ARG"), 
+		L"Failed IVsBuildPropertyStorage::SetPropertyValue()");
+
+	return S_OK;
+}
+
+HRESULT on_cmdline_args(VARIANT *in) {
+	// THREAD: VS Main OR <some other> 
+	//         ^^^ can only go wild here 
+	
+	CComBSTR new_arg(in->bstrVal);
+	CComPtr<IVsTaskBody> task_body = task_body_t::create(on_cmdline_args_body);
+	if (!task_body) {
+		MessageBoxW(0, L"Failed to create task body", L"Error", MB_ICONERROR);
+		return E_FAIL;
+	}
+
+	// NONE of these are guaranteed
+  //VSTC_BACKGROUNDTHREAD = 0,
+  //VSTC_UITHREAD_SEND = 1,
+  //VSTC_UITHREAD_BACKGROUND_PRIORITY = 2,
+  //VSTC_UITHREAD_IDLE_PRIORITY = 3,
+  //VSTC_CURRENTCONTEXT = 4,
+  //VSTC_BACKGROUNDTHREAD_LOW_IO_PRIORITY = 5,
+  //VSTC_UITHREAD_NORMAL_PRIORITY = 6
+
+	// DoWork() called in threads (by debugger "names"): "combase.dll" chain of calls or "Worker Thread"
+	//CComPtr<IVsTask> tasks[7];
+	//for (int i = 0; i < 7; ++i) {
+	//	vs_services.task_scheduler->CreateTask((VSTASKRUNCONTEXT)i, task_body, &tasks[i]);
+	//}
+
+	//for (int i = 0; i < 7; ++i) {
+	//	tasks[i]->Start();
+	//}
+
+	// TODO: Test IVsUIShell::PostExecCommand
+
+	CComPtr<IVsTask> task;
+	vs_services.task_scheduler->CreateTask(VSTC_UITHREAD_SEND, task_body, &task);
+
+	return S_OK;
+}
+
+// ================================ BOILERPLATE CONNECTION POINTS (START HERE) ================================
+#pragma region
+
+HRESULT pkg_on_startup() {
+	// THREAD: VS Main
+	
+	HRCALL_NORET(
+		vs_services.provider->QueryService(IID_SVsTaskSchedulerService, IID_IVsTaskSchedulerService, (void **)&vs_services.task_scheduler),
+		L"Failed to retrieve an IVsTaskSchedulerService");
+
+	return S_OK;
+}
+
+HRESULT pkg_command_map(const GUID &cmdset_id, DWORD cmd_id, DWORD flags, VARIANT *in, VARIANT *out) {
+	// THREAD: VS Main OR <some other> 
+	//         ^^^ can only go wild here 
+
+	if (InlineIsEqualGUID(cmdset_id, CLSID_cmdset) && cmd_id == CMDID_cmdline_args_control) {
+		on_cmdline_args(in);
+	}
+
+	return OLECMDERR_E_NOTSUPPORTED;
+}
+
+#pragma endregion 
+
+// ================================ BOILERPLATE START (IGNORE BELOW THIS LINE) ================================
+#pragma region 
 
 struct __declspec(novtable) pkg_t :
 	// Non-thread safe COM object; partial implementation for IUnknown (the COM map below provides the rest).
@@ -142,162 +319,23 @@ __if_exists(_GetAttrEntries) {
 
 	// DLL is registered with VS via a pkgdef file. Don't do anything if asked to self-register.
 	static HRESULT UpdateRegistry(BOOL bRegister) { return S_OK; }
+	static CommandHandler *GetCommand(const VSL::CommandId &target_id) { return 0; }
 
-	static void msgbox_hresult(HRESULT hr, const wchar_t *format, ...) {
-		wchar_t error_msg[512] = {};
-		wchar_t system_message[256] = {};
-		wchar_t custom_message[256] = {};
-
-		FormatMessageW(
-			FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-			0,
-			hr,
-			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-			system_message,
-			sizeof(system_message) / sizeof(wchar_t),
-			0
-		);
-
-		va_list args;
-		va_start(args, format);
-		vswprintf_s(custom_message, sizeof(custom_message) / sizeof(wchar_t), format, args);
-		va_end(args);
-
-		swprintf_s(error_msg, sizeof(error_msg) / sizeof(wchar_t), L"%s\nHRESULT: 0x%08X\n%s", custom_message, hr, system_message);
-
-		MessageBoxW(0, error_msg, L"[Error] GC MSVC Toolbar", MB_ICONERROR | MB_OK);
-	}
-
-	// ================================ Interesting non-boilerplate START ================================
-
-	static CommandHandler *GetCommand(const VSL::CommandId &target_id) {
-		// Command map specific to this package
-		// Combined command id: cmdset GUID & ID within cmdset
-		static VSL::CommandId id_cmdline_args_control(CLSID_cmdset, CMDID_cmdline_args_control);
-		static CommandHandler cmdline_args_handler(id_cmdline_args_control, 0, &on_cmdline_args);
-
-		if (target_id == id_cmdline_args_control) {
-			return &cmdline_args_handler;
-		}
-
-		return 0;
-	}
-
-	void on_cmdline_args(CommandHandler *sender, DWORD flags, VARIANT *in, VARIANT *out) {
-		if (!marshaled_startup_proj_stream) {
-			msgbox_hresult(E_POINTER, L"No valid marshaled startup project available");
-			return;
-		}
-
-		HRESULT hr = S_OK;
-
-		// Duplicate the stream for reuse
-		IStream *duplicate_stream = 0;
-		hr = CreateStreamOnHGlobal(0, TRUE, &duplicate_stream);
-		if (FAILED(hr)) {
-			msgbox_hresult(hr, L"Failed to create duplicate stream");
-			return;
-		}
-
-		// Copy the original stream to the duplicate
-		LARGE_INTEGER seek_start = {};
-		ULARGE_INTEGER stream_size = {};
-		marshaled_startup_proj_stream->Seek(seek_start, STREAM_SEEK_END, &stream_size);
-		marshaled_startup_proj_stream->Seek(seek_start, STREAM_SEEK_SET, 0);
-
-		hr = marshaled_startup_proj_stream->CopyTo(duplicate_stream, stream_size, 0, 0);
-		if (FAILED(hr)) {
-			msgbox_hresult(hr, L"Failed to copy to duplicate stream");
-			duplicate_stream->Release();
-			return;
-		}
-
-		marshaled_startup_proj_stream->Seek(seek_start, STREAM_SEEK_SET, 0);
-		duplicate_stream->Seek(seek_start, STREAM_SEEK_SET, 0);
-
-		// Unmarshal the interface from the duplicate stream
-		CComPtr<vsix::IVsHierarchy> startup_proj;
-		hr = CoGetInterfaceAndReleaseStream(duplicate_stream, vsix::IID_IVsHierarchy, (void **)&startup_proj);
-		if (FAILED(hr)) {
-			msgbox_hresult(hr, L"Failed to unmarshal IVsHierarchy from duplicate stream");
-			return;
-		}
-
-		// Interact with the unmarshaled IVsHierarchy
-		CComPtr<vsix::IVsBuildPropertyStorage> prop_storage;
-		hr = startup_proj->QueryInterface(vsix::IID_IVsBuildPropertyStorage, (void **)&prop_storage);
-		if (FAILED(hr)) {
-			msgbox_hresult(hr, L"Failed to query IVsBuildPropertyStorage from IVsHierarchy");
-			return;
-		}
-
-		// == TODO: HARDCODED == 
-
-		prop_storage->SetPropertyValue(
-			L"LocalDebuggerCommandArguments",
-			L"Debug|x64",
-			PST_USER_FILE,
-			in->bstrVal
-		);
+	HRESULT __stdcall Exec(const GUID *pCmdGroupGuid, DWORD nCmdID, DWORD nCmdexecopt, VARIANT *in, VARIANT *out) override {
+		return pkg_command_map(*pCmdGroupGuid, nCmdID, nCmdexecopt, in, out);
 	}
 
 	// Init VSPackage
 	// https://learn.microsoft.com/en-us/dotnet/api/microsoft.visualstudio.shell.interop.ivspackage.setsite?view=visualstudiosdk-2022
 	HRESULT __stdcall SetSite(IServiceProvider *service_provider) override {
-		// Also called on VsSiteBaseImpl::Close (not documented)
-		if (!service_provider) {
-			return S_OK;
-		}
-
-		HRESULT hr = S_OK;
-
-		hr = service_provider->QueryService(vsix::IID_IVsUIShell, vsix::IID_IVsUIShell, (void **)&services.ui_shell);
-		if (FAILED(hr)) {
-			msgbox_hresult(hr, L"Failed retrieving service: VS UI shell");
-			return hr;
-		}
-
-		hr = service_provider->QueryService(vsix::IID_IVsSolution, vsix::IID_IVsSolution, (void **)&services.solution);
-		if (FAILED(hr)) {
-			msgbox_hresult(hr, L"Failed retrieving service: Solution");
-			return hr;
-		}
-
-		hr = service_provider->QueryService(vsix::IID_IVsSolutionBuildManager, vsix::IID_IVsSolutionBuildManager, (void **)&services.build_manager);
-		if (FAILED(hr)) {
-			msgbox_hresult(hr, L"Failed retrieving service: Build Manager");
-			return hr;
-		}
-
-		vsix::IVsHierarchy *startup_proj;
-		hr = services.build_manager->get_StartupProject(&startup_proj);
-		if (FAILED(hr)) {
-			return hr;
-		}
-
-		// Create a stream to marshal the interface
-		hr = CoMarshalInterThreadInterfaceInStream(vsix::IID_IVsHierarchy, (IUnknown*)startup_proj, &marshaled_startup_proj_stream);
-		if (FAILED(hr)) {
-			msgbox_hresult(hr, L"Failed to marshal IVsHierarchy to a stream");
-			return hr;
+		if (!vs_services.provider) {
+			// Only on init. 
+			vs_services.provider = service_provider;
+			HRCALL(pkg_on_startup(), L"Failed initialising extension on startup.");
 		}
 
 		return VSL::IVsPackageImpl<pkg_t, &CLSID_pkg>::SetSite(service_provider);
 	}
-
-	// ================= DATA =================
-
-	// Service cache 
-	struct {
-		CComPtr<vsix::IVsUIShell> ui_shell;
-		CComPtr<vsix::IVsSolution> solution;
-		CComPtr<vsix::IVsSolutionBuildManager> build_manager;
-	} services;
-
-	// Don't wrap! Stream will be released by COM internally. 
-	IStream *marshaled_startup_proj_stream = 0;
-
-	// ================================ Interesting non-boilerplate END ================================
 };
 
 // This exposes pkg_t for instantiation via DllGetClassObject; however, an instance
@@ -380,3 +418,5 @@ extern "C" HRESULT DllGetClassObject(const IID &rclsid, const IID &riid, void **
 }
 
 #pragma warning(pop)
+
+#pragma endregion

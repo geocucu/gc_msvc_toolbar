@@ -19,8 +19,11 @@ namespace vsix {
 	struct Properties;
 	struct Property;
 	struct ConfigurationManager;
+	struct Configurations;
 	struct Configuration;
 
+	// ================================ _DTE ================================
+#pragma region
 	const GUID IID__DTE = { 0x04a72314, 0x32e9, 0x48e2,{ 0x9b, 0x87, 0xa6, 0x36, 0x03, 0x45, 0x4f, 0x3e } };
 	struct __declspec(novtable) _DTE {
 		// == IUnknown ==
@@ -85,13 +88,20 @@ namespace vsix {
 		virtual HRESULT __stdcall SatelliteDLLPath(BSTR Path, BSTR Name, BSTR *pFullPath) = 0;
 		virtual HRESULT __stdcall get_Edition(BSTR *ProductEdition) = 0;
 	};
+#pragma endregion
 
+	// ================================ Solution ================================
+#pragma region
 	const GUID IID_Solution = { 0xb35caa8c, 0x77de, 0x4ab3, { 0x8e, 0x5a, 0xf0, 0x38, 0xe3, 0xfc, 0x60, 0x56 } };
 	// Only forward declared. 
 	// Retrieve _Solution from this with QueryInterface.
 	struct Solution;
+#pragma endregion
 
+	// ================================ _Solution ================================
+#pragma region
 	const GUID IID__Solution = { 0x26f6cc4b, 0x7a48, 0x4e4d,{ 0x8a, 0xf5, 0x9e, 0x96, 0x02, 0x32, 0xe0, 0x5f } };
+	
 	struct __declspec(novtable) _Solution {
 		// == IUnknown ==
 		virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
@@ -136,7 +146,10 @@ namespace vsix {
 		virtual HRESULT __stdcall FindProjectItem(BSTR FileName, ProjectItem **ppProjectItem) = 0;
 		virtual HRESULT __stdcall ProjectItemsTemplatePath(BSTR ProjectKind, BSTR *pFullPath) = 0;
 	};
+#pragma endregion
 
+	// ================================ SolutionBuild ================================
+#pragma region
 	const GUID IID_SolutionBuild = { 0xa3c1c40c, 0x9218, 0x4d4c, { 0x9d, 0xaa, 0x07, 0x5f, 0x64, 0xf6, 0x92, 0x2c } };
 	struct __declspec(novtable) SolutionBuild {
 		// == IUnknown ==
@@ -167,7 +180,10 @@ namespace vsix {
 		virtual HRESULT __stdcall get_SolutionConfigurations(SolutionConfigurations **ppSolutionConfigurations) = 0;
 		virtual HRESULT __stdcall BuildProject(BSTR SolutionConfiguration, BSTR ProjectUniqueName, VARIANT_BOOL WaitForBuildToFinish = 0) = 0;
 	};
+#pragma endregion
 
+	// ================================ _Solution ================================
+#pragma region
 	const GUID IID_Projects = { 0xe3ec0add, 0x31b3, 0x461f, { 0x83, 0x03, 0x8a, 0x5e, 0x69, 0x31, 0x25, 0x7a } };
 	struct __declspec(novtable) Projects {
 		// == IUnknown ==
@@ -190,7 +206,10 @@ namespace vsix {
 		virtual HRESULT __stdcall get_Properties(Properties **ppObject) = 0;
 		virtual HRESULT __stdcall get_Kind(BSTR *lpbstrReturn) = 0;
 	};
+#pragma endregion
 
+	// ================================ Project ================================
+#pragma region
 	const GUID IID_Project = { 0x866311e6, 0xc887, 0x4143, { 0x98, 0x33, 0x64, 0x5f, 0x5b, 0x93, 0xf6, 0xf1 } };
 	struct __declspec(novtable) Project {
 		// == IUnknown ==
@@ -231,7 +250,10 @@ namespace vsix {
 		virtual HRESULT __stdcall get_CodeModel(CodeModel **ppCodeModel) = 0;
 		virtual HRESULT __stdcall Delete() = 0;
 	};
+#pragma endregion
 
+	// ================================ Properties ================================
+#pragma region
 	const GUID IID_Properties = { 0x4cc8ccf5, 0xa926, 0x4646, { 0xb1, 0x7f, 0xb4, 0x94, 0x0c, 0xae, 0xd4, 0x72 } };
 	struct __declspec(novtable) Properties {
 		// == IUnknown ==
@@ -253,7 +275,10 @@ namespace vsix {
 		virtual HRESULT __stdcall _NewEnum(IUnknown **lppiuReturn) = 0;
 		virtual HRESULT __stdcall get_DTE(DTE **lppaReturn) = 0;
 	};
+#pragma endregion
 
+	// ================================ Property ================================
+#pragma region
 	const GUID IID_Property = { 0x7b988e06, 0x2581, 0x485e, { 0x93, 0x22, 0x04, 0x88, 0x1e, 0x06, 0x00, 0xd0 } };
 	struct __declspec(novtable) Property {
 		// == IUnknown ==
@@ -282,7 +307,10 @@ namespace vsix {
 		virtual HRESULT __stdcall putref_Object(IUnknown *lpunk) = 0;
 		virtual HRESULT __stdcall get_DTE(DTE **lppaReturn) = 0;
 	};
+#pragma endregion
 
+	// ================================ ConfigurationManager ================================
+#pragma region
 	const GUID IID_ConfigurationManager = { 0x9043fda1, 0x345b, 0x4364, { 0x90, 0x0f, 0xbc, 0x85, 0x98, 0xeb, 0x8e, 0x4f } };
 	struct __declspec(novtable) ConfigurationManager {
 		// == IUnknown ==
@@ -313,7 +341,34 @@ namespace vsix {
 		virtual HRESULT __stdcall get_SupportedPlatforms(VARIANT *pPlatforms) = 0;
 		virtual HRESULT __stdcall get_ActiveConfiguration(Configuration **ppOut) = 0;
 	};
+#pragma endregion
 
+	// ================================ Configurations ================================
+	const GUID IID_Configurations = { 0xb6b4c8d6, 0x4d27, 0x43b9, { 0xb4, 0x5c, 0x52, 0xbd, 0x16, 0xb6, 0xba, 0x38 } };
+	struct __declspec(novtable) Configurations {
+		// == IUnknown ==
+		virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+		virtual ULONG __stdcall AddRef() = 0;
+		virtual ULONG __stdcall Release() = 0;
+
+		// == IDispatch ==
+		virtual HRESULT __stdcall GetTypeInfoCount(UINT *pctinfo) = 0;
+		virtual HRESULT __stdcall GetTypeInfo(UINT iTInfo, LCID lcid, ITypeInfo **ppTInfo) = 0;
+		virtual HRESULT __stdcall GetIDsOfNames(const IID &riid, LPOLESTR *rgszNames, UINT cNames, LCID lcid, DISPID *rgDispId) = 0;
+		virtual HRESULT __stdcall Invoke(DISPID dispIdMember, const IID &riid, LCID lcid, WORD wFlags, DISPPARAMS *pDispParams, VARIANT *pVarResult, EXCEPINFO *pExcepInfo, UINT *puArgErr) = 0;
+
+		// == Configurations ==
+		virtual HRESULT __stdcall get_DTE(DTE * *ppDTE) = 0;
+		virtual HRESULT __stdcall get_Parent(IDispatch **ppParent) = 0;
+		virtual HRESULT __stdcall _NewEnum(IUnknown **Enumerator) = 0;
+		virtual HRESULT __stdcall Item(VARIANT Index, Configuration **ppOut) = 0;
+		virtual HRESULT __stdcall get_Count(long *pCount) = 0;
+		virtual HRESULT __stdcall get_Name(BSTR *pName) = 0;
+		virtual HRESULT __stdcall get_Type(vsConfigurationType *pType) = 0;
+	};
+
+	// ================================ Configuration ================================
+#pragma region
 	const GUID IID_Configuration = { 0x90813589, 0xfe21, 0x4aa4, { 0xa2, 0xe5, 0x05, 0x3f, 0xd2, 0x74, 0xe9, 0x80 } };
 	struct __declspec(novtable) Configuration {
 		// == IUnknown ==
@@ -348,4 +403,5 @@ namespace vsix {
 		virtual HRESULT __stdcall get_ExtenderCATID(BSTR *pRetval) = 0;
 		virtual HRESULT __stdcall get_OutputGroups(OutputGroups **ppOutputGroups) = 0;
 	};
+#pragma endregion
 }

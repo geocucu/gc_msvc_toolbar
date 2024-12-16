@@ -2302,6 +2302,24 @@ struct __declspec(novtable) IVsTrackProjectDocuments3 {
   };
 #pragma endregion
 
+  // From Microsoft.VisualStudio.Shell.Interop.11.0.xml
+  // Specifies how the task is run.
+  enum VSTASKRUNCONTEXT {
+    // Runs the task on the background thread pool with normal priority.
+    VSTC_BACKGROUNDTHREAD = 0,
+    // Runs the task on UI thread using RPC callback to be executed as soon as possible. Note: This context may cause reentrancy.
+    VSTC_UITHREAD_SEND = 1,
+    // Runs the task on the UI thread using background priority(that is, below user input). Tasks are scheduled even while modal dialogs are open. Tasks are scheduled to occur when no user input is pending, plus a short delay. Appropriate for short tasks or slightly longer tasks.
+    VSTC_UITHREAD_BACKGROUND_PRIORITY = 2,
+    // Runs the task on the UI thread when Visual Studio is idle. Tasks are not scheduled till most modal dialogs have been dismissed. Appropriate for very short running tasks.
+    VSTC_UITHREAD_IDLE_PRIORITY = 3,
+    // Runs the task on the current context(that is, the UI thread or the background thread).
+    VSTC_CURRENTCONTEXT = 4,
+    // Runs the task on background thread pool and sets the background mode on the thread while the task is running. This is useful for IO heavy background tasks that are not time critical.
+    VSTC_BACKGROUNDTHREAD_LOW_IO_PRIORITY = 5,
+    // Runs the task on UI thread using Dispatcher with Normal priority.
+    VSTC_UITHREAD_NORMAL_PRIORITY = 6
+  };
 }
 
 #undef UNUSED_FUNC

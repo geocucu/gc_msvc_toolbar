@@ -77,5 +77,8 @@
     <None Include="docs\behaviour.md">
       <Filter>docs</Filter>
     </None>
+    <None Include="issues.md">
+      <Filter>docs</Filter>
+    </None>
   </ItemGroup>
 </Project>
