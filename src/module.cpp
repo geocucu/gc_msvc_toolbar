@@ -101,109 +101,66 @@ void msgbox_hresult(HRESULT hr, const wchar_t *format, ...) {
 	MessageBoxW(0, error_msg, L"[Error] GC MSVC Toolbar", MB_ICONERROR | MB_OK);
 }
 
+
 struct {
 	IServiceProvider *provider;
-	CComPtr<IVsTaskSchedulerService> task_scheduler;
+	CComPtr<vsix::_DTE> dte;
 } vs_services;
 
-struct task_body_t : CComObjectRootEx<CComSingleThreadModel>, IVsTaskBody {
-	std::function<HRESULT(VARIANT *pResult)> task_logic;
-
-	BEGIN_COM_MAP(task_body_t)
-		COM_INTERFACE_ENTRY(IVsTaskBody)
-	END_COM_MAP()
-
-	task_body_t() : task_logic([](VARIANT *) -> HRESULT { return S_OK; }) {}
-	task_body_t(const std::function<HRESULT(VARIANT *pResult)> &logic) : task_logic(logic) {}
-
-	HRESULT __stdcall DoWork(IVsTask *pTask, DWORD dwCount, IVsTask **pParentTasks, VARIANT *pResult) override {
-		if (!pResult) {
-			return E_POINTER; 
-		}
-
-		VariantInit(pResult); 
-		if (task_logic) {
-			return task_logic(pResult);
-		}
-		return S_OK; 
-	}
-
-	static CComPtr<IVsTaskBody> create(const std::function<HRESULT(VARIANT *pResult)> &logic) {
-		CComPtr<IVsTaskBody> task_body;
-		CComObject<task_body_t> *raw_body = nullptr;
-		HRESULT hr = CComObject<task_body_t>::CreateInstance(&raw_body);
-		if (SUCCEEDED(hr) && raw_body) {
-			raw_body->AddRef();
-			raw_body->task_logic = logic;
-			task_body.Attach(raw_body);
-		}
-		return task_body;
-	}
-};
+IStream *project_streams[64];
+int num_projects;
 
 // ================================ COMMANDLINE ARGS COMBO BOX ================================
 
-HRESULT on_cmdline_args_body(VARIANT *result) {
-	CComPtr<vsix::IVsSolutionBuildManager> build_manager;
-	HRCALL(
-		vs_services.provider->QueryService(vsix::IID_IVsSolutionBuildManager, vsix::IID_IVsSolutionBuildManager, (void **)&build_manager),
-		L"Failed to retrieve IVsSolutionBuildManager");
+CComPtr<IStream> duplicate_stream(IStream *src) {
+	CComPtr<IStream> new_stream;
+	HRESULT hr = CreateStreamOnHGlobal(0, TRUE, &new_stream);
+	if (FAILED(hr)) {
+		msgbox_hresult(hr, L"Failed to create an IStream.");
+		return 0;
+	}
 
-	CComPtr<vsix::IVsHierarchy> startup_proj;
-	HRCALL(
-		build_manager->get_StartupProject(&startup_proj),
-		L"Failed to get startup project");
+	LARGE_INTEGER seek_start = {};
+	ULARGE_INTEGER stream_size = {};
+	src->Seek(seek_start, STREAM_SEEK_END, &stream_size);
+	src->Seek(seek_start, STREAM_SEEK_SET, 0);
 
-	CComPtr<vsix::IVsBuildPropertyStorage> prop_storage;
-	HRCALL(
-		startup_proj->QueryInterface(vsix::IID_IVsBuildPropertyStorage, (void **)&prop_storage),
-		L"Failed to query IVsBuildPropertyStorage from IVsHierarchy");
+	hr = src->CopyTo(new_stream, stream_size, 0, 0);
+	if (FAILED(hr)) {
+		msgbox_hresult(hr, L"Failed to copy to duplicate stream");
+		return 0;
+	}
 
-	HRCALL(
-		prop_storage->SetPropertyValue(
-		L"LocalDebuggerCommandArguments",
-		L"Debug|x64",
-		PST_USER_FILE,
-		L"DUMMY ARG"), 
-		L"Failed IVsBuildPropertyStorage::SetPropertyValue()");
+	src->Seek(seek_start, STREAM_SEEK_SET, 0);
+	new_stream->Seek(seek_start, STREAM_SEEK_SET, 0);
 
-	return S_OK;
+	return new_stream;
 }
 
 HRESULT on_cmdline_args(VARIANT *in) {
-	// THREAD: VS Main OR <some other> 
-	//         ^^^ can only go wild here 
+	// TODO: Use DTE for picking out the Startup Project, since get_StartupProject here will 
+	// break, even with marshaling.
 	
-	CComBSTR new_arg(in->bstrVal);
-	CComPtr<IVsTaskBody> task_body = task_body_t::create(on_cmdline_args_body);
-	if (!task_body) {
-		MessageBoxW(0, L"Failed to create task body", L"Error", MB_ICONERROR);
-		return E_FAIL;
-	}
+	// Do not release!
+	IVsHierarchy *proj;
+	HRCALL(
+		CoGetInterfaceAndReleaseStream(duplicate_stream(project_streams[0]), vsix::IID_IVsHierarchy, (void **)&proj),
+		L"Failed retrieving an IVsHierarchy from stream"
+	);
 
-	// NONE of these are guaranteed
-  //VSTC_BACKGROUNDTHREAD = 0,
-  //VSTC_UITHREAD_SEND = 1,
-  //VSTC_UITHREAD_BACKGROUND_PRIORITY = 2,
-  //VSTC_UITHREAD_IDLE_PRIORITY = 3,
-  //VSTC_CURRENTCONTEXT = 4,
-  //VSTC_BACKGROUNDTHREAD_LOW_IO_PRIORITY = 5,
-  //VSTC_UITHREAD_NORMAL_PRIORITY = 6
+	CComPtr<vsix::IVsBuildPropertyStorage> props;
+	HRCALL(
+		proj->QueryInterface(vsix::IID_IVsBuildPropertyStorage, (void **)&props),
+		L"Failed to query IVsBuildPropertyStorage from IVsHierarchy");
 
-	// DoWork() called in threads (by debugger "names"): "combase.dll" chain of calls or "Worker Thread"
-	//CComPtr<IVsTask> tasks[7];
-	//for (int i = 0; i < 7; ++i) {
-	//	vs_services.task_scheduler->CreateTask((VSTASKRUNCONTEXT)i, task_body, &tasks[i]);
-	//}
-
-	//for (int i = 0; i < 7; ++i) {
-	//	tasks[i]->Start();
-	//}
-
-	// TODO: Test IVsUIShell::PostExecCommand
-
-	CComPtr<IVsTask> task;
-	vs_services.task_scheduler->CreateTask(VSTC_UITHREAD_SEND, task_body, &task);
+	// == TODO: HARDCODED == 
+	HRCALL(
+		props->SetPropertyValue(
+			L"LocalDebuggerCommandArguments",
+			L"Debug|x64",
+			PST_USER_FILE,
+			in->bstrVal),
+		L"Failed SetPropertyValue");
 
 	return S_OK;
 }
@@ -211,12 +168,69 @@ HRESULT on_cmdline_args(VARIANT *in) {
 // ================================ BOILERPLATE CONNECTION POINTS (START HERE) ================================
 #pragma region
 
+// Init VSPackage
+// https://learn.microsoft.com/en-us/dotnet/api/microsoft.visualstudio.shell.interop.ivspackage.setsite?view=visualstudiosdk-2022
 HRESULT pkg_on_startup() {
 	// THREAD: VS Main
-	
-	HRCALL_NORET(
-		vs_services.provider->QueryService(IID_SVsTaskSchedulerService, IID_IVsTaskSchedulerService, (void **)&vs_services.task_scheduler),
-		L"Failed to retrieve an IVsTaskSchedulerService");
+
+	// == IVs* interfaces ==
+	{
+		CComPtr<vsix::IVsSolution> sln;
+		HRCALL(
+			vs_services.provider->QueryService(vsix::IID_IVsSolution, vsix::IID_IVsSolution, (void **)&sln),
+			L"Failed retrieving IVsSolution");
+
+		CComPtr<IEnumHierarchies> hierarchies;
+		HRCALL(
+			sln->GetProjectEnum(__VSENUMPROJFLAGS::EPF_ALLPROJECTS, GUID_NULL, &hierarchies),
+			L"Failed IVsSolution::GetProjectEnum"
+		);
+
+		CComPtr<IVsHierarchy> hierarchy;
+		ULONG fetched = 0;
+		while (hierarchies->Next(1, &hierarchy, &fetched) == S_OK && fetched > 0) {
+			if (!hierarchy) {
+				continue;
+			}
+
+			HRCALL(
+				CoMarshalInterThreadInterfaceInStream(vsix::IID_IVsHierarchy, (IUnknown *)hierarchy, &project_streams[num_projects]),
+				L"Failed to marshal IVsHierarchy to a stream");
+			num_projects++;
+
+			hierarchy.Release();
+		}
+	}
+
+	// == Older _DTE ==
+	{
+		CComPtr<VxDTE::_DTE> dte;
+		HRCALL(
+			vs_services.provider->QueryService(__uuidof(VxDTE::_DTE), __uuidof(VxDTE::_DTE), (void**)&dte),
+			L"Failed retrieving _DTE"
+		);
+
+		CComPtr<IUnknown> sln_CLR;
+		HRCALL(
+			dte->get_Solution((VxDTE::Solution **)&sln_CLR),
+			L"Failed retrieving a Solution");
+
+		// Actual sln
+		CComPtr<VxDTE::_Solution> sln;
+		HRCALL(
+			sln_CLR->QueryInterface(__uuidof(VxDTE::_Solution), (void **)&sln),
+			L"Failed retrieving a _Solution"
+		);
+
+		CComPtr<VxDTE::SolutionBuild> sln_build;
+		HRCALL(
+			sln->get_SolutionBuild(&sln_build),
+			L"Failed retrieving a SolutionBuild"
+		);
+
+		CComVariant projects;
+		sln_build->get_StartupProjects(&projects);
+	}
 
 	return S_OK;
 }
@@ -325,8 +339,6 @@ __if_exists(_GetAttrEntries) {
 		return pkg_command_map(*pCmdGroupGuid, nCmdID, nCmdexecopt, in, out);
 	}
 
-	// Init VSPackage
-	// https://learn.microsoft.com/en-us/dotnet/api/microsoft.visualstudio.shell.interop.ivspackage.setsite?view=visualstudiosdk-2022
 	HRESULT __stdcall SetSite(IServiceProvider *service_provider) override {
 		if (!vs_services.provider) {
 			// Only on init. 
