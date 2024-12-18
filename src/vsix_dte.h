@@ -1,5 +1,23 @@
 #pragma once
 
+//
+// Older Visual Studio SDK ("DTE" based)
+//
+
+// ======== Visual Studio ======== 
+#include <dte.h> // for extensibility
+#include <objext.h> // for ILocalRegistry
+#include <vshelp.h> // for Help
+#include <uilocale.h> // for IUIHostLocale2
+#include <IVsQueryEditQuerySave2.h> // for IVsQueryEditQuerySave2
+#include <vbapkg.h> // for IVsMacroRecorder
+#include <fpstfmt.h> // for IPersistFileFormat
+#include <VSRegKeyNames.h>
+#include <stdidcmd.h>
+#include <stdiduie.h> // For status bar consts.
+#include <textfind.h>
+#include <textmgr.h>
+
 // DTE 
 #include <dte80.h>
 #include <dte90.h>

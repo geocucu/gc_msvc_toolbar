@@ -1,4 +1,23 @@
 #pragma once
+
+//
+// Newer Visual Studio SDK ("IVs*" based)
+//
+
+// ======== VSL ======== 
+#define VSLASSERT _ASSERTE
+#define VSLASSERTEX(exp, szMsg) _ASSERT_BASE(exp, szMsg)
+#define VSLTRACE ATLTRACE
+#include <VSLPackage.h>
+#include <VSLCommandTarget.h>
+#include <VSLWindows.h>
+#include <VSLFile.h>
+#include <VSLContainers.h>
+#include <VSLComparison.h>
+#include <VSLAutomation.h>
+#include <VSLFindAndReplace.h>
+#include <VSLShortNameDefines.h>
+#include <VSShellInterfaces.h>
 #include <vsshell.h>
 #include <vsshell110.h>
 

@@ -26,10 +26,16 @@
     <ClInclude Include="res\resource.h">
       <Filter>headers</Filter>
     </ClInclude>
-    <ClInclude Include="src\vsix_interfaces.h">
+    <ClInclude Include="src\vsix_dte.h">
       <Filter>headers</Filter>
     </ClInclude>
-    <ClInclude Include="src\ivs_interfaces.h">
+    <ClInclude Include="src\vsix_ivs.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\debug_helper.h">
+      <Filter>headers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common.h">
       <Filter>headers</Filter>
     </ClInclude>
   </ItemGroup>
@@ -37,9 +43,6 @@
     <ClCompile Include="src\module.cpp">
       <Filter>src</Filter>
     </ClCompile>
-    <Midl Include="gc_msvc_toolbar.idl">
-      <Filter>src</Filter>
-    </Midl>
     <PkgdefFile Include="gc_msvc_toolbar.pkgdef">
       <Filter>src</Filter>
     </PkgdefFile>
@@ -77,7 +80,7 @@
     <None Include="docs\behaviour.md">
       <Filter>docs</Filter>
     </None>
-    <None Include="issues.md">
+    <None Include="docs\issues.md">
       <Filter>docs</Filter>
     </None>
   </ItemGroup>

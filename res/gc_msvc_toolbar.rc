@@ -3,5 +3,3 @@
 103                PNG       "images.png"
 400                ICON      "package.ico"
 
-1                  TYPELIB   "gc_msvc_toolbar.tlb"
-

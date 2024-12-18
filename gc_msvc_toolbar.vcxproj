@@ -54,22 +54,6 @@
     <IntDir>$(SolutionDir)bin\tmp\$(ProjectName)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <Midl>
-      <AdditionalOptions>-ms_ext -c_ext -no_format_opt</AdditionalOptions>
-      <PreprocessorDefinitions>DEBUG;UNICODE;_UNICODE;_NEW_SDK=1;_WINDOWS;_USRDLL;_WCHAR_T_DEFINED;__MIDL__=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <WarningLevel>0</WarningLevel>
-      <SuppressStartupBanner>true</SuppressStartupBanner>
-      <TargetEnvironment>X64</TargetEnvironment>
-      <GenerateStublessProxies>true</GenerateStublessProxies>
-      <TypeLibraryName>$(IntDir)%(FileName).tlb</TypeLibraryName>
-      <HeaderFileName>$(IntDir)%(FileName).h</HeaderFileName>
-      <DLLDataFileName>$(IntDir)%(FileName)_d.c</DLLDataFileName>
-      <InterfaceIdentifierFileName>$(IntDir)%(FileName).c</InterfaceIdentifierFileName>
-      <ProxyFileName>$(IntDir)%(FileName)_p.c</ProxyFileName>
-      <EnableErrorChecks>All</EnableErrorChecks>
-      <StructMemberAlignment>8</StructMemberAlignment>
-    </Midl>
     <ClCompile>
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>.\;..;$(Office10Include);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
@@ -97,22 +81,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <Midl>
-      <AdditionalOptions>-ms_ext -c_ext -no_format_opt</AdditionalOptions>
-      <PreprocessorDefinitions>NDEBUG;_ATL_STATIC_REGISTRY;_ATL_MIN_CRT;UNICODE;_UNICODE;_NEW_SDK=1;_WINDOWS;_USRDLL;_WCHAR_T_DEFINED;__MIDL__=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <WarningLevel>0</WarningLevel>
-      <SuppressStartupBanner>true</SuppressStartupBanner>
-      <TargetEnvironment>X64</TargetEnvironment>
-      <GenerateStublessProxies>true</GenerateStublessProxies>
-      <TypeLibraryName>$(IntDir)%(FileName).tlb</TypeLibraryName>
-      <HeaderFileName>$(IntDir)%(FileName).h</HeaderFileName>
-      <DLLDataFileName>$(IntDir)%(FileName)_d.c</DLLDataFileName>
-      <InterfaceIdentifierFileName>$(IntDir)%(FileName).c</InterfaceIdentifierFileName>
-      <ProxyFileName>$(IntDir)%(FileName)_p.c</ProxyFileName>
-      <EnableErrorChecks>All</EnableErrorChecks>
-      <StructMemberAlignment>8</StructMemberAlignment>
-    </Midl>
     <ClCompile>
       <AdditionalOptions>/Oxs</AdditionalOptions>
       <Optimization>MaxSpeed</Optimization>
@@ -143,13 +111,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="src\ivs_interfaces.h" />
-    <ClInclude Include="src\vsix_interfaces.h" />
+    <ClInclude Include="src\common.h" />
+    <ClInclude Include="src\debug_helper.h" />
+    <ClInclude Include="src\vsix_ivs.h" />
+    <ClInclude Include="src\vsix_dte.h" />
     <None Include="docs\behaviour.md" />
     <None Include="docs\DTE_proj_property_names.md" />
+    <None Include="docs\issues.md" />
     <None Include="docs\IVs_snippets.md" />
     <None Include="docs\props_debugging.md" />
-    <None Include="issues.md" />
     <None Include="res\ui.vsct" />
     <None Include="res\vsct.rc" />
     <None Include="gc_msvc_toolbar.def" />
@@ -157,7 +127,6 @@
     <PkgdefFile Include="gc_msvc_toolbar.pkgdef" />
     <Image Include="res\images.png" />
     <Image Include="res\package.ico" />
-    <Midl Include="gc_msvc_toolbar.idl" />
     <ClInclude Include="res\guids.h" />
     <ClInclude Include="res\resource.h" />
     <ClCompile Include="src\module.cpp" />

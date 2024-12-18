@@ -1,17 +1,4 @@
-#pragma warning(push)
-#pragma warning(disable:28251) // Inconsistent annotations 
-
-// Bake GUIDs
-#define INITGUID
-#include <guiddef.h>
-#include "..\res\guids.h"
-#undef INITGUID
-#include <VSShellInterfaces.h>
-
-// ======== MIDL ======== 
-#define _MIDL_USE_GUIDDEF_ 
-#include "gc_msvc_toolbar.c" 
-#include "gc_msvc_toolbar.h" 
+#include "common.h"
 
 // ======== ATL ======== 
 #define _ATL_APARTMENT_THREADED
@@ -23,98 +10,24 @@
 #include <atlfile.h>
 #include <atlsafe.h>
 
-// ======== Visual Studio ======== 
-#include <dte.h> // for extensibility
-#include <objext.h> // for ILocalRegistry
-#include <vshelp.h> // for Help
-#include <uilocale.h> // for IUIHostLocale2
-#include <IVsQueryEditQuerySave2.h> // for IVsQueryEditQuerySave2
-#include <vbapkg.h> // for IVsMacroRecorder
-#include <fpstfmt.h> // for IPersistFileFormat
-#include <VSRegKeyNames.h>
-#include <stdidcmd.h>
-#include <stdiduie.h> // For status bar consts.
-#include <textfind.h>
-#include <textmgr.h>
-
-// ======== VSL ======== 
-#define VSLASSERT _ASSERTE
-#define VSLASSERTEX(exp, szMsg) _ASSERT_BASE(exp, szMsg)
-#define VSLTRACE ATLTRACE
-#include <VSLPackage.h>
-#include <VSLCommandTarget.h>
-#include <VSLWindows.h>
-#include <VSLFile.h>
-#include <VSLContainers.h>
-#include <VSLComparison.h>
-#include <VSLAutomation.h>
-#include <VSLFindAndReplace.h>
-#include <VSLShortNameDefines.h>
+// ======== VSSDK ======== 
+#include "vsix_ivs.h"
+#include "vsix_dte.h"
 
 // ======== GUIDs/IDs ======== 
+#include "..\res\guids.h"
 #include "..\res\resource.h"
 
-#include "vsix_interfaces.h"
-#include "ivs_interfaces.h"
-#include <functional>
+#include "debug_helper.h"
 
-typedef unsigned long long u64;
-typedef long long i64;
+// ======== COM Utils ======== 
+#pragma region
 
-#ifdef _DEBUG
-#define DEBUGBREAK __debugbreak();
-#else 
-#define DEBUGBREAK 
-#endif 
-
-// Also wrap in the HRESULT var. Use the watch window for the code. 
-#define HRCALL_NORET(x, msg) { \
-  HRESULT hr = x; \
-  if (FAILED(hr)) { msgbox_hresult(hr, msg); DEBUGBREAK } }
-
-#define HRCALL(x, msg) { \
-  HRESULT hr = x; \
-  if (FAILED(hr)) { msgbox_hresult(hr, msg); DEBUGBREAK; return hr; } }
-
-void msgbox_hresult(HRESULT hr, const wchar_t *format, ...) {
-	wchar_t error_msg[512] = {};
-	wchar_t system_message[256] = {};
-	wchar_t custom_message[256] = {};
-
-	FormatMessageW(
-		FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-		0,
-		hr,
-		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-		system_message,
-		sizeof(system_message) / sizeof(wchar_t),
-		0
-	);
-
-	va_list args;
-	va_start(args, format);
-	vswprintf_s(custom_message, sizeof(custom_message) / sizeof(wchar_t), format, args);
-	va_end(args);
-
-	swprintf_s(error_msg, sizeof(error_msg) / sizeof(wchar_t), L"%s\nHRESULT: 0x%08X\n%s", custom_message, hr, system_message);
-
-	MessageBoxW(0, error_msg, L"[Error] GC MSVC Toolbar", MB_ICONERROR | MB_OK);
-}
-
-
-struct {
-	IServiceProvider *provider;
-	CComPtr<vsix::_DTE> dte;
-} vs_services;
-
-IStream *project_streams[64];
-int num_projects;
-
-// ================================ COMMANDLINE ARGS COMBO BOX ================================
-
-CComPtr<IStream> duplicate_stream(IStream *src) {
+CComPtr<IStream> com_duplicate_stream(IStream *src) {
 	CComPtr<IStream> new_stream;
-	HRESULT hr = CreateStreamOnHGlobal(0, TRUE, &new_stream);
+	HRESULT hr = S_OK;
+
+	hr = CreateStreamOnHGlobal(0, TRUE, &new_stream);
 	if (FAILED(hr)) {
 		msgbox_hresult(hr, L"Failed to create an IStream.");
 		return 0;
@@ -137,30 +50,36 @@ CComPtr<IStream> duplicate_stream(IStream *src) {
 	return new_stream;
 }
 
+#pragma endregion
+
+// ================================ DATA ================================
+struct {
+	IServiceProvider *provider;
+	CComPtr<vsix::_DTE> dte;
+} vs_services;
+
+IStream *project_streams[64];
+int num_projects;
+
+// ================================ COMMANDLINE ARGS COMBO BOX ================================
+
 HRESULT on_cmdline_args(VARIANT *in) {
 	// TODO: Use DTE for picking out the Startup Project, since get_StartupProject here will 
 	// break, even with marshaling.
 	
 	// Do not release!
 	IVsHierarchy *proj;
-	HRCALL(
-		CoGetInterfaceAndReleaseStream(duplicate_stream(project_streams[0]), vsix::IID_IVsHierarchy, (void **)&proj),
-		L"Failed retrieving an IVsHierarchy from stream"
-	);
+	HRCALL(CoGetInterfaceAndReleaseStream(com_duplicate_stream(project_streams[0]), vsix::IID_IVsHierarchy, (void **)&proj));
 
 	CComPtr<vsix::IVsBuildPropertyStorage> props;
-	HRCALL(
-		proj->QueryInterface(vsix::IID_IVsBuildPropertyStorage, (void **)&props),
-		L"Failed to query IVsBuildPropertyStorage from IVsHierarchy");
+	HRCALL(proj->QueryInterface(vsix::IID_IVsBuildPropertyStorage, (void **)&props));
 
 	// == TODO: HARDCODED == 
-	HRCALL(
-		props->SetPropertyValue(
+	HRCALL(props->SetPropertyValue(
 			L"LocalDebuggerCommandArguments",
-			L"Debug|x64",
+			L"Release|x64",
 			PST_USER_FILE,
-			in->bstrVal),
-		L"Failed SetPropertyValue");
+			in->bstrVal));
 
 	return S_OK;
 }
@@ -176,15 +95,10 @@ HRESULT pkg_on_startup() {
 	// == IVs* interfaces ==
 	{
 		CComPtr<vsix::IVsSolution> sln;
-		HRCALL(
-			vs_services.provider->QueryService(vsix::IID_IVsSolution, vsix::IID_IVsSolution, (void **)&sln),
-			L"Failed retrieving IVsSolution");
+		HRCALL(vs_services.provider->QueryService(vsix::IID_IVsSolution, vsix::IID_IVsSolution, (void **)&sln));
 
 		CComPtr<IEnumHierarchies> hierarchies;
-		HRCALL(
-			sln->GetProjectEnum(__VSENUMPROJFLAGS::EPF_ALLPROJECTS, GUID_NULL, &hierarchies),
-			L"Failed IVsSolution::GetProjectEnum"
-		);
+		HRCALL(sln->GetProjectEnum(__VSENUMPROJFLAGS::EPF_ALLPROJECTS, GUID_NULL, &hierarchies));
 
 		CComPtr<IVsHierarchy> hierarchy;
 		ULONG fetched = 0;
@@ -193,9 +107,7 @@ HRESULT pkg_on_startup() {
 				continue;
 			}
 
-			HRCALL(
-				CoMarshalInterThreadInterfaceInStream(vsix::IID_IVsHierarchy, (IUnknown *)hierarchy, &project_streams[num_projects]),
-				L"Failed to marshal IVsHierarchy to a stream");
+			HRCALL(CoMarshalInterThreadInterfaceInStream(vsix::IID_IVsHierarchy, (IUnknown *)hierarchy, &project_streams[num_projects]));
 			num_projects++;
 
 			hierarchy.Release();
@@ -205,28 +117,17 @@ HRESULT pkg_on_startup() {
 	// == Older _DTE ==
 	{
 		CComPtr<VxDTE::_DTE> dte;
-		HRCALL(
-			vs_services.provider->QueryService(__uuidof(VxDTE::_DTE), __uuidof(VxDTE::_DTE), (void**)&dte),
-			L"Failed retrieving _DTE"
-		);
+		HRCALL(vs_services.provider->QueryService(__uuidof(VxDTE::_DTE), __uuidof(VxDTE::_DTE), (void**)&dte));
 
 		CComPtr<IUnknown> sln_CLR;
-		HRCALL(
-			dte->get_Solution((VxDTE::Solution **)&sln_CLR),
-			L"Failed retrieving a Solution");
+		HRCALL(dte->get_Solution((VxDTE::Solution **)&sln_CLR));
 
 		// Actual sln
 		CComPtr<VxDTE::_Solution> sln;
-		HRCALL(
-			sln_CLR->QueryInterface(__uuidof(VxDTE::_Solution), (void **)&sln),
-			L"Failed retrieving a _Solution"
-		);
+		HRCALL(sln_CLR->QueryInterface(__uuidof(VxDTE::_Solution), (void **)&sln));
 
 		CComPtr<VxDTE::SolutionBuild> sln_build;
-		HRCALL(
-			sln->get_SolutionBuild(&sln_build),
-			L"Failed retrieving a SolutionBuild"
-		);
+		HRCALL(sln->get_SolutionBuild(&sln_build));
 
 		CComVariant projects;
 		sln_build->get_StartupProjects(&projects);
@@ -343,7 +244,7 @@ __if_exists(_GetAttrEntries) {
 		if (!vs_services.provider) {
 			// Only on init. 
 			vs_services.provider = service_provider;
-			HRCALL(pkg_on_startup(), L"Failed initialising extension on startup.");
+			HRCALL(pkg_on_startup());
 		}
 
 		return VSL::IVsPackageImpl<pkg_t, &CLSID_pkg>::SetSite(service_provider);
@@ -428,7 +329,5 @@ extern "C" HRESULT DllGetClassObject(const IID &rclsid, const IID &riid, void **
 
 	return hr;
 }
-
-#pragma warning(pop)
 
 #pragma endregion
