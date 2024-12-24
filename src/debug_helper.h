@@ -25,6 +25,7 @@
 //   [Static] msgbox_hresult
 
 #include "common.h"
+#include <stdio.h>
 
 #ifndef PROJECT_NAME
 #define PROJECT_NAME ""
@@ -41,45 +42,61 @@
 #endif 
 
 static void capture_callstack(wchar_t *callstack, size_t size) {
-	void *stack[64];
-	// Skip 2 -> Skip capture_callstack and msgbox
-	unsigned short frames = RtlCaptureStackBackTrace(2, 64, stack, 0);
+  void *stack[64];
+  // Skip 2 -> Skip capture_callstack and msgbox
+  unsigned short frames = RtlCaptureStackBackTrace(2, 64, stack, 0);
 
-	HANDLE process = GetCurrentProcess();
-	SymInitialize(process, 0, TRUE);
+  HANDLE process = GetCurrentProcess();
+  if (!SymInitialize(process, NULL, TRUE)) {
+    wcscpy_s(callstack, size, L"Failed to initialize symbols.");
+    return;
+  }
 
-	wchar_t buffer[256];
-	SYMBOL_INFOW *symbol = (SYMBOL_INFOW *)malloc(sizeof(SYMBOL_INFOW) + 256 * sizeof(wchar_t));
-	if (!symbol) {
-		wcscpy_s(callstack, size, L"Failed to allocate memory for symbol info.");
-		return;
-	}
+  wchar_t buffer[256];
+  size_t remaining = size;
+  size_t symbol_size = sizeof(SYMBOL_INFOW) + 256 * sizeof(wchar_t);
+  SYMBOL_INFOW *symbol = (SYMBOL_INFOW *)malloc(symbol_size);
 
-	symbol->SizeOfStruct = sizeof(SYMBOL_INFOW);
-	symbol->MaxNameLen = 255;
+  if (!symbol) {
+    wcscpy_s(callstack, size, L"Failed to allocate memory for symbol info.");
+    SymCleanup(process);
+    return;
+  }
 
-	for (unsigned short i = 0; i < frames; ++i) {
-		DWORD64 address = (DWORD64)(stack[i]);
-		DWORD64 displacement = 0;
+  memset(symbol, 0, symbol_size);
+  symbol->SizeOfStruct = sizeof(SYMBOL_INFOW);
+  symbol->MaxNameLen = 255;
 
-		if (SymFromAddrW(process, address, &displacement, symbol)) {
-			// Skip capture_callstack and msgbox
-			if (wcscmp(L"capture_callstack", symbol->Name) == 0 ||
-				wcscmp(L"msgbox_hresult", symbol->Name) == 0) {
-				continue;
-			}
+  callstack[0] = 0;
 
-			swprintf_s(buffer, sizeof(buffer) / sizeof(wchar_t), L"Frame %d: %s (0x%p)\n", i, symbol->Name, stack[i]);
-		}
-		else {
-			swprintf_s(buffer, sizeof(buffer) / sizeof(wchar_t), L"Frame %d: Unknown symbol (0x%p)\n", i, stack[i]);
-		}
+  for (unsigned short i = 0; i < frames; ++i) {
+    DWORD64 address = (DWORD64)(stack[i]);
+    DWORD64 displacement = 0;
 
-		wcscat_s(callstack, size, buffer);
-	}
+    if (SymFromAddrW(process, address, &displacement, symbol)) {
+      if (wcscmp(L"capture_callstack", symbol->Name) == 0 || wcscmp(L"msgbox_hresult", symbol->Name) == 0) {
+        continue;
+      }
 
-	free(symbol);
-	SymCleanup(process);
+      _snwprintf_s(buffer, sizeof(buffer) / sizeof(wchar_t), _TRUNCATE, L"Frame %d: %s (0x%p)\n", i, symbol->Name, stack[i]);
+    }
+    else {
+      _snwprintf_s(buffer, sizeof(buffer) / sizeof(wchar_t), _TRUNCATE, L"Frame %d: Unknown symbol (0x%p)\n", i, stack[i]);
+    }
+
+    size_t len = wcslen(buffer);
+    if (len + 1 > remaining) {
+      _snwprintf_s(buffer, sizeof(buffer) / sizeof(wchar_t), _TRUNCATE, L"... Callstack truncated\n");
+      wcscat_s(callstack, remaining, buffer);
+      break;
+    }
+
+    wcscat_s(callstack, remaining, buffer);
+    remaining -= len;
+  }
+
+  free(symbol);
+  SymCleanup(process);
 }
 
 static void msgbox_hresult(HRESULT hr, const wchar_t *format, ...) {
@@ -98,16 +115,13 @@ static void msgbox_hresult(HRESULT hr, const wchar_t *format, ...) {
 		sizeof(system_message) / sizeof(wchar_t),
 		0);
 
-	// Capture the call stack
 	capture_callstack(callstack, sizeof(callstack) / sizeof(wchar_t));
 
-	// Format the custom message
 	va_list args;
 	va_start(args, format);
 	vswprintf_s(custom_message, sizeof(custom_message) / sizeof(wchar_t), format, args);
 	va_end(args);
 
-	// Create the final error message
 	swprintf_s(
 		error_msg,
 		sizeof(error_msg) / sizeof(wchar_t),
@@ -115,7 +129,6 @@ static void msgbox_hresult(HRESULT hr, const wchar_t *format, ...) {
 		custom_message, hr, system_message, callstack
 	);
 
-	// Display the error message
 	MessageBoxW(0, error_msg, L"[Error] " PROJECT_NAME, MB_ICONERROR | MB_OK);
 }
 

@@ -32,3 +32,22 @@ In the non-boilerplate code, this is the `pkg_command_map()` function.
 Using `IVsTaskSchedulerService` does not guarantee running on the "VS Main" thread, regardless of the context flag
 passed to `CreateTask()`. 
 It will only run there if `Exec()` is called on "VS Main", and the context flag is one of the "UI thread" ones. 
+
+#### Extension registration
+
+The GUIDs specified in the .pkgdef don't seem to end up in the registry.  
+Extensions are probably installed (.vsix is extracted) in `%localappdata%\Microsoft\VisualStudio\<version>[Exp]\Extensions`
+
+#### What makes an extension
+
+The DLL exports `DllGetClassObject`.  
+VS calls this expecting an `IClassFactory` interface implementation in return.  
+VS will call the factory's `CreateInstance`, expecting an object that implements both `IVsPackage` and `IOleCommandTarget`, which I will call "the package".
+
+Therefore, the minimum code for a valid extension:
+- DLL exports:
+  - `DllGetClassObject` (for creating the factory object)
+- COM interfaces implemented:
+  - `IClassFactory` (for creating the package object)
+  - `IVsPackage` (for integration with VS)
+  - `IOleCommandTarget` (for handling VS commands)

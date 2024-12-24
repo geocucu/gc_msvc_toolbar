@@ -4,22 +4,11 @@
 // Newer Visual Studio SDK ("IVs*" based)
 //
 
-// ======== VSL ======== 
-#define VSLASSERT _ASSERTE
-#define VSLASSERTEX(exp, szMsg) _ASSERT_BASE(exp, szMsg)
-#define VSLTRACE ATLTRACE
-#include <VSLPackage.h>
-#include <VSLCommandTarget.h>
-#include <VSLWindows.h>
-#include <VSLFile.h>
-#include <VSLContainers.h>
-#include <VSLComparison.h>
-#include <VSLAutomation.h>
-#include <VSLFindAndReplace.h>
-#include <VSLShortNameDefines.h>
-#include <VSShellInterfaces.h>
-#include <vsshell.h>
-#include <vsshell110.h>
+// Windows
+#include <guiddef.h>
+#include <Windows.h>
+// OLE
+#include <DocObj.h>   
 
 //
 // Coherent, in one place, and easier to read and access documentation for IVs* interfaces. 
@@ -37,6 +26,8 @@
 
 namespace vsix {
 #pragma region Forward Declarations
+  struct IUnknown;
+
   struct IVsBuildPropertyStorage;
   struct IVsBuildPropertyStorage2;
   struct IVsBuildPropertyStorage3;
@@ -93,6 +84,1684 @@ namespace vsix {
   struct IVsTrackProjectDocuments3;
 
   struct IVsHierarchyEvents;
+
+  struct IVsUIContextEvents;
+  struct IServiceProvider;
+  struct IVsWindowFrame;
+  struct IVsProject;
+
+  struct IVsTaskBody;
+  struct IVsTask;
+
+  struct IVsPropertyBag;
+  struct IVsBrowseProjectLocation;
+  struct IVsUpdateSolutionEventsAsyncCallback;
+  struct IVsUpdateSolutionEventsAsync;
+
+  struct IVsCfg;
+  struct IVsProjectCfg;
+  struct IVsBuildableProjectCfg;
+  struct IVsCfgProvider;
+  struct IVsProjectCfgProvider;
+
+  struct IVsTextLayer;
+  struct IVsTextLayerMarker;
+  struct IVsTextMarker;
+  struct IVsTextBuffer;
+  struct IVsTextLines;
+  struct IVsOutputWindowPane;
+  struct IVsOutput;
+  struct IVsEnumOutputs;
+  struct IVsBuildStatusCallback;
+  struct IEnumHierarchies;
+  struct IVsWindowFrameEvents;
+  struct IVsTextTrackingPoint;
+  struct IVsEnumLayerMarkers;
+  struct IVsEnumTextSpans;
+  struct IVsTextMarkerClient;
+  struct IVsTextLineMarker;
+  struct IVsEnumLineMarkers;
+  struct IVsTextLinesEvents;
+  struct IVsTextView;
+  struct IVsCompletionSet;
+  struct IVsTipWindow;
+  struct IVsViewRangeClient;
+  struct IVsTextViewFilter;
+  struct IVsProjectFactory;
+  struct IEnumWindowFrames;
+  struct IVsUIHierarchy;
+  struct IVsToolWindowToolbar;
+  struct IVsBuildPropertyStorageEvents;
+  struct IVsPackage;
+  struct IDispatch;
+#pragma endregion
+
+  // ================================ IVsPackage ================================
+#pragma region
+  const GUID IID_IVsPackage = { 0xD4F3F4B1, 0xE900, 0x4e51, { 0xAD, 0xB3, 0xD5, 0x32, 0x34, 0x8F, 0x83, 0xCB } };
+
+  struct VSPROPSHEETPAGE {
+    DWORD dwSize;
+    DWORD dwFlags;
+    HINSTANCE hInstance;
+    WORD wTemplateId;
+    DWORD dwTemplateSize;
+    BYTE *pTemplate;
+    DLGPROC pfnDlgProc;
+    LPARAM lParam;
+    LPFNPSPCALLBACKA pfnCallback;
+    UINT *pcRefParent;
+    DWORD dwReserved;
+    HWND hwndDlg;
+  };
+
+  enum VSPKGRESETFLAGS {
+    PKGRF_TOOLBOXITEMS = 0x1,
+    PKGRF_TOOLBOXSETUP = 0x2,
+    PKGRF_ADDSTDPREVIEWER = 0x4
+  };
+
+  struct __declspec(novtable) IVsPackage {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsPackage ==
+    virtual HRESULT __stdcall SetSite(IServiceProvider *pSP) = 0;
+    virtual HRESULT __stdcall QueryClose(BOOL *pfCanClose) = 0;
+    virtual HRESULT __stdcall Close() = 0;
+    virtual HRESULT __stdcall GetAutomationObject(const wchar_t *prop_name, IDispatch **dispatch) = 0;
+    virtual HRESULT __stdcall CreateTool(REFGUID rguidPersistenceSlot) = 0;
+    virtual HRESULT __stdcall ResetDefaults(VSPKGRESETFLAGS grfFlags) = 0;
+    virtual HRESULT __stdcall GetPropertyPage(REFGUID rguidPage, VSPROPSHEETPAGE *ppage) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsToolWindowToolbarHost ================================
+#pragma region
+  const GUID IID_IVsToolWindowToolbarHost = { 0xCF7549A9, 0x7A2A, 0x4a6e, { 0xAC, 0xF4, 0x05, 0x45, 0x2C, 0x98, 0xCF, 0x7E } };
+
+  enum VSTWT_LOCATION {
+    VSTWT_LEFT = 0,
+    VSTWT_TOP = (VSTWT_LEFT + 1),
+    VSTWT_RIGHT = (VSTWT_TOP + 1),
+    VSTWT_BOTTOM = (VSTWT_RIGHT + 1)
+  };
+
+  struct IVsToolWindowToolbarHost {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsToolWindowToolbarHost ==
+    virtual HRESULT __stdcall AddToolbar(VSTWT_LOCATION dwLoc, const GUID *pguid, DWORD dwId) = 0;
+    virtual HRESULT __stdcall BorderChanged() = 0;
+    virtual HRESULT __stdcall ShowHideToolbar(const GUID *pguid, DWORD dwId, BOOL fShow) = 0;
+    virtual HRESULT __stdcall ProcessMouseActivation(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) = 0;
+    virtual HRESULT __stdcall ForceUpdateUI() = 0;
+    virtual HRESULT __stdcall ProcessMouseActivationModal(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp, LRESULT *plResult) = 0;
+    virtual HRESULT __stdcall Close(DWORD dwReserved) = 0;
+    virtual HRESULT __stdcall Show(DWORD dwReserved) = 0;
+    virtual HRESULT __stdcall Hide(DWORD dwReserved) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsToolWindowToolbar ================================
+#pragma region
+  const GUID IID_IVsToolWindowToolbar = { 0x4544D333, 0x8D5F, 0x4517, { 0x91, 0x13, 0x35, 0x50, 0xD6, 0x18, 0xF2, 0xAD } };
+
+  struct IVsToolWindowToolbar {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsToolWindowToolbar ==
+    virtual HRESULT __stdcall GetBorder(RECT *prc) = 0;
+    virtual HRESULT __stdcall SetBorderSpace(const LPCBORDERWIDTHS pbw) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsUIHierarchy ================================
+#pragma region
+  const GUID IID_IVsUIHierarchy = { 0xE82609EA, 0x5169, 0x47f4, { 0x91, 0xd0, 0x69, 0x57, 0x27, 0x2c, 0xbe, 0x9f } };
+
+  enum VSHPROPID {
+    VSHPROPID_NIL = -1,
+    VSHPROPID_LAST = -1000,
+    VSHPROPID_Parent = -1000,
+    VSHPROPID_FirstChild = -1001,
+    VSHPROPID_NextSibling = -1002,
+    VSHPROPID_Root = -1003,
+    VSHPROPID_TypeGuid = -1004,
+    VSHPROPID_SaveName = -2002,
+    VSHPROPID_Caption = -2003,
+    VSHPROPID_IconImgList = -2004,
+    VSHPROPID_IconIndex = -2005,
+    VSHPROPID_Expandable = -2006,
+    VSHPROPID_ExpandByDefault = -2011,
+    VSHPROPID_ProjectName = -2012,
+    VSHPROPID_Name = -2012,
+    VSHPROPID_IconHandle = -2013,
+    VSHPROPID_OpenFolderIconHandle = -2014,
+    VSHPROPID_OpenFolderIconIndex = -2015,
+    VSHPROPID_CmdUIGuid = -2016,
+    VSHPROPID_SelContainer = -2017,
+    VSHPROPID_BrowseObject = -2018,
+    VSHPROPID_AltHierarchy = -2019,
+    VSHPROPID_AltItemid = -2020,
+    VSHPROPID_ProjectDir = -2021,
+    VSHPROPID_SortPriority = -2022,
+    VSHPROPID_UserContext = -2023,
+    VSHPROPID_EditLabel = -2026,
+    VSHPROPID_ExtObject = -2027,
+    VSHPROPID_ExtSelectedItem = -2028,
+    VSHPROPID_StateIconIndex = -2029,
+    VSHPROPID_ProjectType = -2030,
+    VSHPROPID_TypeName = -2030,
+    VSHPROPID_ReloadableProjectFile = -2031,
+    VSHPROPID_HandlesOwnReload = -2031,
+    VSHPROPID_ParentHierarchy = -2032,
+    VSHPROPID_ParentHierarchyItemid = -2033,
+    VSHPROPID_ItemDocCookie = -2034,
+    VSHPROPID_Expanded = -2035,
+    VSHPROPID_ConfigurationProvider = -2036,
+    VSHPROPID_ImplantHierarchy = -2037,
+    VSHPROPID_OwnerKey = -2038,
+    VSHPROPID_StartupServices = -2040,
+    VSHPROPID_FirstVisibleChild = -2041,
+    VSHPROPID_NextVisibleSibling = -2042,
+    VSHPROPID_IsHiddenItem = -2043,
+    VSHPROPID_IsNonMemberItem = -2044,
+    VSHPROPID_IsNonLocalStorage = -2045,
+    VSHPROPID_StorageType = -2046,
+    VSHPROPID_ItemSubType = -2047,
+    VSHPROPID_OverlayIconIndex = -2048,
+    VSHPROPID_DefaultNamespace = -2049,
+    VSHPROPID_IsNonSearchable = -2051,
+    VSHPROPID_IsFindInFilesForegroundOnly = -2052,
+    VSHPROPID_CanBuildFromMemory = -2053,
+    VSHPROPID_PreferredLanguageSID = -2054,
+    VSHPROPID_ShowProjInSolutionPage = -2055,
+    VSHPROPID_AllowEditInRunMode = -2056,
+    VSHPROPID_IsNewUnsavedItem = -2057,
+    VSHPROPID_ShowOnlyItemCaption = -2058,
+    VSHPROPID_ProjectIDGuid = -2059,
+    VSHPROPID_DesignerVariableNaming = -2060,
+    VSHPROPID_DesignerFunctionVisibility = -2061,
+    VSHPROPID_HasEnumerationSideEffects = -2062,
+    VSHPROPID_DefaultEnableBuildProjectCfg = -2063,
+    VSHPROPID_DefaultEnableDeployProjectCfg = -2064,
+    VSHPROPID_FIRST = -2064
+  };
+
+  // Represents a UI hierarchy, combining general hierarchy functionality with UI command handling.
+  struct IVsUIHierarchy {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsHierarchy ==
+    virtual HRESULT __stdcall SetSite(IServiceProvider *pSP) = 0;
+    virtual HRESULT __stdcall GetSite(IServiceProvider **ppSP) = 0;
+    virtual HRESULT __stdcall QueryClose(BOOL *pfCanClose) = 0;
+    virtual HRESULT __stdcall Close() = 0;
+    virtual HRESULT __stdcall GetGuidProperty(DWORD itemid, VSHPROPID propid, GUID *pguid) = 0;
+    virtual HRESULT __stdcall SetGuidProperty(DWORD itemid, VSHPROPID propid, const GUID &rguid) = 0;
+    virtual HRESULT __stdcall GetProperty(DWORD itemid, VSHPROPID propid, VARIANT *pvar) = 0;
+    virtual HRESULT __stdcall SetProperty(DWORD itemid, VSHPROPID propid, VARIANT var) = 0;
+    virtual HRESULT __stdcall GetNestedHierarchy(DWORD itemid, const IID &iidHierarchyNested, void **ppHierarchyNested, DWORD *pitemidNested) = 0;
+    virtual HRESULT __stdcall GetCanonicalName(DWORD itemid, BSTR *pbstrName) = 0;
+    virtual HRESULT __stdcall ParseCanonicalName(const wchar_t *pszName, DWORD *pitemid) = 0;
+    virtual HRESULT __stdcall AdviseHierarchyEvents(IVsHierarchyEvents *pEventSink, DWORD *pdwCookie) = 0;
+    virtual HRESULT __stdcall UnadviseHierarchyEvents(DWORD dwCookie) = 0;
+
+    // == IVsUIHierarchy ==
+    virtual HRESULT __stdcall QueryStatusCommand(DWORD itemid, const GUID *pguidCmdGroup, ULONG cCmds, OLECMD prgCmds[], OLECMDTEXT *pCmdText) = 0;
+    virtual HRESULT __stdcall ExecCommand(DWORD itemid, const GUID *pguidCmdGroup, DWORD nCmdID, DWORD nCmdexecopt, VARIANT *pvaIn, VARIANT *pvaOut) = 0;
+  };
+#pragma endregion
+
+  // ================================ IEnumWindowFrames ================================
+#pragma region
+  const GUID IID_IEnumWindowFrames = { 0x8C453B03, 0x8907, 0x435b, { 0x96, 0xd7, 0x57, 0x3c, 0x40, 0x94, 0x8f, 0x5c } };
+
+  struct IEnumWindowFrames {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IEnumWindowFrames ==
+    virtual HRESULT __stdcall Next(ULONG celt, IVsWindowFrame **rgelt, ULONG *pceltFetched) = 0;
+    virtual HRESULT __stdcall Skip(ULONG celt) = 0;
+    virtual HRESULT __stdcall Reset() = 0;
+    virtual HRESULT __stdcall Clone(IEnumWindowFrames **ppenum) = 0;
+  };
+#pragma endregion
+
+
+  // ================================ IVsProjectFactory ================================
+#pragma region
+  const GUID IID_IVsProjectFactory = { 0x33FCD00A, 0xBD45, 0x403c, { 0x9c, 0x66, 0x07, 0xba, 0x9a, 0x92, 0x35, 0x01 } };
+
+  enum VSCREATEPROJFLAGS {
+    CPF_CLONEFILE = 0x1,
+    CPF_OPENFILE = 0x2,
+    CPF_OPENDIRECTORY = 0x4,
+    CPF_SILENT = 0x8,
+    CPF_OVERWRITE = 0x10,
+    CPF_NOTINSLNEXPLR = 0x20,
+    CPF_NONLOCALSTORE = 0x40
+  };
+
+  struct IVsProjectFactory {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsProjectFactory ==
+    virtual HRESULT __stdcall CanCreateProject(LPCOLESTR pszFilename, VSCREATEPROJFLAGS grfCreateFlags, BOOL *pfCanCreate) = 0;
+    virtual HRESULT __stdcall CreateProject(
+      LPCOLESTR pszFilename,
+      LPCOLESTR pszLocation,
+      LPCOLESTR pszName,
+      VSCREATEPROJFLAGS grfCreateFlags,
+      const IID &iidProject,
+      void **ppvProject,
+      BOOL *pfCanceled) = 0;
+    virtual HRESULT __stdcall SetSite(IServiceProvider *pSP) = 0;
+    virtual HRESULT __stdcall Close() = 0;
+  };
+#pragma endregion
+
+
+  // ================================ IVsTextViewFilter ================================
+#pragma region
+  const GUID IID_IVsTextViewFilter = { 0x6B6F0B32, 0xB88B, 0x40F8, { 0xa8, 0xfe, 0x97, 0x43, 0x8c, 0x5b, 0xdb, 0xef } };
+
+  struct TextSpan {
+    long iStartIndex;
+    long iStartLine;
+    long iEndIndex;
+    long iEndLine;
+  };
+
+  struct IVsTextViewFilter {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsTextViewFilter ==
+    virtual HRESULT __stdcall GetWordExtent(long iLine, long iIndex, DWORD dwFlags, TextSpan *pSpan) = 0;
+    virtual HRESULT __stdcall GetDataTipText(TextSpan *pSpan, BSTR *pbstrText) = 0;
+    virtual HRESULT __stdcall GetPairExtents(long iLine, long iIndex, TextSpan *pSpan) = 0;
+  };
+#pragma endregion
+
+
+  // ================================ IVsViewRangeClient ================================
+#pragma region
+  const GUID IID_IVsViewRangeClient = { 0x30491A5B, 0xA47E, 0x4C9C, { 0x82, 0x04, 0x18, 0x58, 0x66, 0x48, 0xA2, 0x77 } };
+
+  enum TextViewAction {
+    TVA_SETCARETPOS = 0,
+    TVA_CENTERLINES = (TVA_SETCARETPOS + 1)
+  };
+
+  struct IVsViewRangeClient {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsViewRangeClient ==
+    virtual HRESULT __stdcall AdjustViewRange(IVsTextView *pView, TextViewAction action, long iLine, long iCount) = 0;
+  };
+#pragma endregion
+
+
+  // ================================ IVsTipWindow ================================
+#pragma region
+  const GUID IID_IVsTipWindow = { 0x64C7FFC4, 0xB9EE, 0x4599, { 0xb1, 0x30, 0xff, 0x9d, 0x89, 0x0e, 0xcf, 0xd4 } };
+
+  enum TipPosPreference {
+    TPP_ABOVE = 0,
+    TPP_BELOW = (TPP_ABOVE + 1),
+    TPP_LEFT = (TPP_BELOW + 1),
+    TPP_RIGHT = (TPP_LEFT + 1),
+    TPP_DOCKED = (TPP_RIGHT + 1)
+  };
+
+  struct TIPSIZEDATA {
+    SIZE size;
+    TipPosPreference dwPosition;
+  };
+
+  struct IVsTipWindow {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsTipWindow ==
+    virtual HRESULT __stdcall GetContextStream(long *piPos, long *piLength) = 0;
+    virtual HRESULT __stdcall GetSizePreferences(const RECT *prcCtxBounds, TIPSIZEDATA *pSizeData) = 0;
+    virtual HRESULT __stdcall Paint(HDC hdc, const RECT *prc) = 0;
+    virtual void __stdcall Dismiss() = 0;
+    virtual LRESULT __stdcall WndProc(HWND hwnd, UINT iMsg, WPARAM wParam, LPARAM lParam) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsCompletionSet ================================
+#pragma region
+  const GUID IID_IVsCompletionSet = { 0x0EF79249, 0xB0BF, 0x4CD0, { 0xa9, 0x66, 0xc4, 0x71, 0x35, 0x46, 0xc3, 0xa5 } };
+
+  struct IVsCompletionSet {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsCompletionSet ==
+    virtual DWORD __stdcall GetFlags() = 0;
+    virtual long __stdcall GetCount() = 0;
+    virtual HRESULT __stdcall GetDisplayText(long iIndex, const WCHAR **ppszText, long *piGlyph) = 0;
+    virtual HRESULT __stdcall GetImageList(HANDLE *phImages) = 0;
+    virtual HRESULT __stdcall GetDescriptionText(long iIndex, BSTR *pbstrDescription) = 0;
+    virtual HRESULT __stdcall GetInitialExtent(long *piLine, long *piStartCol, long *piEndCol) = 0;
+    virtual HRESULT __stdcall GetBestMatch(const WCHAR *pszSoFar, long iLength, long *piIndex, DWORD *pdwFlags) = 0;
+    virtual HRESULT __stdcall OnCommit(const WCHAR *pszSoFar, long iIndex, BOOL fSelected, WCHAR cCommit, BSTR *pbstrCompleteWord) = 0;
+    virtual void __stdcall Dismiss() = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsTextView ================================
+#pragma region
+  const GUID IID_IVsTextView = { 0xBB23A14B, 0x7C61, 0x469A, { 0x98, 0x90, 0xa9, 0x56, 0x48, 0xce, 0xd5, 0xe6 } };
+
+  enum vsIndentStyle {
+    vsIndentStyleNone = 0,
+    vsIndentStyleDefault = (vsIndentStyleNone + 1),
+    vsIndentStyleSmart = (vsIndentStyleDefault + 1)
+  };
+
+  struct INITVIEW {
+    unsigned int fVirtualSpace;
+    unsigned int fStreamSelMode;
+    unsigned int fOvertype;
+    unsigned int fVisibleWhitespace;
+    unsigned int fWidgetMargin;
+    unsigned int fSelectionMargin;
+    unsigned int fDragDropMove;
+    unsigned int fHotURLs;
+    vsIndentStyle IndentStyle;
+  };
+
+  enum TextSelMode {
+    SM_STREAM = 0,
+    SM_BOX = (SM_STREAM + 1)
+  };
+
+  struct IVsTextView {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsTextView ==
+    virtual HRESULT __stdcall Initialize(IVsTextLines *pBuffer, HWND hwndParent, DWORD InitFlags, const INITVIEW *pInitView) = 0;
+    virtual HRESULT __stdcall CloseView() = 0;
+    virtual HRESULT __stdcall GetCaretPos(long *piLine, long *piColumn) = 0;
+    virtual HRESULT __stdcall SetCaretPos(long iLine, long iColumn) = 0;
+    virtual HRESULT __stdcall GetSelectionSpan(TextSpan *pSpan) = 0;
+    virtual HRESULT __stdcall GetSelection(long *piAnchorLine, long *piAnchorCol, long *piEndLine, long *piEndCol) = 0;
+    virtual HRESULT __stdcall SetSelection(long iAnchorLine, long iAnchorCol, long iEndLine, long iEndCol) = 0;
+    virtual TextSelMode __stdcall GetSelectionMode() = 0;
+    virtual HRESULT __stdcall SetSelectionMode(TextSelMode iSelMode) = 0;
+    virtual HRESULT __stdcall ClearSelection(BOOL fMoveToAnchor) = 0;
+    virtual HRESULT __stdcall CenterLines(long iTopLine, long iCount) = 0;
+    virtual HRESULT __stdcall GetSelectedText(BSTR *pbstrText) = 0;
+    virtual HRESULT __stdcall GetSelectionDataObject(IDataObject **ppIDataObject) = 0;
+    virtual HRESULT __stdcall GetTextStream(long iTopLine, long iTopCol, long iBottomLine, long iBottomCol, BSTR *pbstrText) = 0;
+    virtual HRESULT __stdcall GetBuffer(IVsTextLines **ppBuffer) = 0;
+    virtual HRESULT __stdcall SetBuffer(IVsTextLines *pBuffer) = 0;
+    virtual HWND __stdcall GetWindowHandle() = 0;
+    virtual HRESULT __stdcall GetScrollInfo(long iBar, long *piMinUnit, long *piMaxUnit, long *piVisibleUnits, long *piFirstVisibleUnit) = 0;
+    virtual HRESULT __stdcall SetScrollPosition(long iBar, long iFirstVisibleUnit) = 0;
+    virtual HRESULT __stdcall AddCommandFilter(IOleCommandTarget *pNewCmdTarg, IOleCommandTarget **ppNextCmdTarg) = 0;
+    virtual HRESULT __stdcall RemoveCommandFilter(IOleCommandTarget *pCmdTarg) = 0;
+    virtual HRESULT __stdcall UpdateCompletionStatus(IVsCompletionSet *pCompSet, DWORD dwFlags) = 0;
+    virtual HRESULT __stdcall UpdateTipWindow(IVsTipWindow *pTipWindow, DWORD dwFlags) = 0;
+    virtual HRESULT __stdcall GetWordExtent(long iLine, long iCol, DWORD dwFlags, TextSpan *pSpan) = 0;
+    virtual HRESULT __stdcall RestrictViewRange(long iMinLine, long iMaxLine, IVsViewRangeClient *pClient) = 0;
+    virtual HRESULT __stdcall ReplaceTextOnLine(long iLine, long iStartCol, long iCharsToReplace, const WCHAR *pszNewText, long iNewLen) = 0;
+    virtual HRESULT __stdcall GetLineAndColumn(long iPos, long *piLine, long *piIndex) = 0;
+    virtual HRESULT __stdcall GetNearestPosition(long iLine, long iCol, long *piPos, long *piVirtualSpaces) = 0;
+    virtual HRESULT __stdcall UpdateViewFrameCaption() = 0;
+    virtual HRESULT __stdcall CenterColumns(long iLine, long iLeftCol, long iColCount) = 0;
+    virtual HRESULT __stdcall EnsureSpanVisible(TextSpan span) = 0;
+    virtual HRESULT __stdcall PositionCaretForEditing(long iLine, long cIndentLevels) = 0;
+    virtual HRESULT __stdcall GetPointOfLineColumn(long iLine, long iCol, POINT *ppt) = 0;
+    virtual HRESULT __stdcall GetLineHeight(long *piLineHeight) = 0;
+    virtual HRESULT __stdcall HighlightMatchingBrace(DWORD dwFlags, ULONG cSpans, TextSpan *rgBaseSpans) = 0;
+    virtual HRESULT __stdcall SendExplicitFocus() = 0;
+    virtual HRESULT __stdcall SetTopLine(long iBaseLine) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsTextLinesEvents ================================
+#pragma region
+  const GUID IID_IVsTextLinesEvents = { 0x598D7074, 0xDC17, 0x4162, { 0x9a, 0x2f, 0x97, 0xdd, 0x45, 0x40, 0xc2, 0xdd } };
+
+  struct TextLineChange {
+    long iStartIndex;
+    long iStartLine;
+    long iOldEndIndex;
+    long iOldEndLine;
+    long iNewEndIndex;
+    long iNewEndLine;
+  };
+
+  struct IVsTextLinesEvents {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsTextLinesEvents ==
+    virtual void __stdcall OnChangeLineText(const TextLineChange *pTextLineChange, BOOL fLast) = 0;
+    virtual void __stdcall OnChangeLineAttributes(long iFirstLine, long iLastLine) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsEnumLineMarkers ================================
+#pragma region
+  const GUID IID_IVsEnumLineMarkers = { 0x35E981F1, 0x77EF, 0x4343, { 0xaa, 0xa1, 0x87, 0x41, 0xf3, 0x86, 0x27, 0xa2 } };
+
+  struct IVsEnumLineMarkers {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsEnumLineMarkers ==
+    virtual HRESULT __stdcall Reset() = 0;
+    virtual HRESULT __stdcall Next(IVsTextLineMarker **ppRetval) = 0;
+    virtual HRESULT __stdcall GetCount(long *pcMarkers) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsTextLineMarker ================================
+#pragma region
+  const GUID IID_IVsTextLineMarker = { 0x31E2DCA7, 0xCCFF, 0x4E09, { 0xb4, 0x33, 0x17, 0xc7, 0x39, 0xcf, 0x69, 0xad } };
+
+  struct IVsTextLineMarker {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsTextMarker ==
+    virtual HRESULT __stdcall GetType(long *piMarkerType) = 0;
+    virtual HRESULT __stdcall SetType(long iMarkerType) = 0;
+    virtual HRESULT __stdcall GetVisualStyle(DWORD *pdwFlags) = 0;
+    virtual HRESULT __stdcall SetVisualStyle(DWORD dwFlags) = 0;
+    virtual HRESULT __stdcall Invalidate() = 0;
+    virtual HRESULT __stdcall DrawGlyph(HDC hdc, RECT *pRect) = 0;
+    virtual HRESULT __stdcall GetTipText(BSTR *pbstrText) = 0;
+    virtual HRESULT __stdcall UnadviseClient() = 0;
+    virtual HRESULT __stdcall GetMarkerCommandInfo(long iItem, BSTR *pbstrText, DWORD *pcmdf) = 0;
+    virtual HRESULT __stdcall ExecMarkerCommand(long iItem) = 0;
+    virtual HRESULT __stdcall GetBehavior(DWORD *pdwBehavior) = 0;
+    virtual HRESULT __stdcall SetBehavior(DWORD dwBehavior) = 0;
+    virtual HRESULT __stdcall GetPriorityIndex(long *piPriorityIndex) = 0;
+
+    // == IVsTextLineMarker == 
+    virtual HRESULT __stdcall GetLineBuffer(IVsTextLines **ppBuffer) = 0;
+    virtual HRESULT __stdcall ResetSpan(long iStartLine, long iStartIndex, long iEndLine, long iEndIndex) = 0;
+    virtual HRESULT __stdcall GetCurrentSpan(TextSpan *pSpan) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsTextMarkerClient ================================
+#pragma region
+  const GUID IID_IVsTextMarkerClient = { 0xB1938F1B, 0xD7A9, 0x42F8, { 0x99, 0x60, 0xd0, 0x09, 0x02, 0x7b, 0x3d, 0x2e } };
+
+  struct IVsTextMarkerClient {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsTextMarkerClient ==
+    virtual void    __stdcall MarkerInvalidated() = 0;
+    virtual HRESULT __stdcall GetTipText(IVsTextMarker *pMarker, BSTR *pbstrText) = 0;
+    virtual void    __stdcall OnBufferSave(LPCOLESTR pszFileName) = 0;
+    virtual void    __stdcall OnBeforeBufferClose() = 0;
+    virtual HRESULT __stdcall GetMarkerCommandInfo(IVsTextMarker *pMarker, long iItem, BSTR *pbstrText, DWORD *pcmdf) = 0;
+    virtual HRESULT __stdcall ExecMarkerCommand(IVsTextMarker *pMarker, long iItem) = 0;
+    virtual void    __stdcall OnAfterSpanReload() = 0;
+    virtual HRESULT __stdcall OnAfterMarkerChange(IVsTextMarker *pMarker) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsEnumTextSpans ================================
+#pragma region
+  const GUID IID_IVsEnumTextSpans = { 0x0F343A75, 0x968B, 0x439E, { 0x81, 0xd6, 0x0d, 0x06, 0x6e, 0x53, 0xd2, 0x8d } };
+
+  struct IVsEnumTextSpans {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsEnumTextSpans ==
+    virtual HRESULT __stdcall Reset(void) = 0;
+    virtual HRESULT __stdcall Next(ULONG cEl, TextSpan *ppOut, ULONG *pcElFetched) = 0;
+    virtual HRESULT __stdcall GetCount(ULONG *pcSpans) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsEnumLayerMarkers ================================
+#pragma region
+  const GUID IID_IVsEnumLayerMarkers = { 0x8F591607, 0x2A26, 0x4A9D, { 0xa6, 0xc5, 0x14, 0x7c, 0x2e, 0x51, 0xe8, 0x95 } };
+  
+  struct IVsEnumLayerMarkers {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsEnumLayerMarkers ==
+    virtual HRESULT __stdcall Reset() = 0;
+    virtual HRESULT __stdcall Next(IVsTextLayerMarker **ppRetval) = 0;
+    virtual HRESULT __stdcall GetCount(long *pcMarkers) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsTextTrackingPoint ================================
+#pragma region
+  const GUID IID_IVsTextTrackingPoint = { 0xD6BF0A8A, 0x3798, 0x49C5, { 0x88, 0x06, 0x64, 0x8a, 0x63, 0x5e, 0xac, 0xc8 } };
+  
+  struct IVsTextTrackingPoint {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsTextTrackingPoint ==
+    virtual HRESULT __stdcall GetTextLayer(IVsTextLayer **ppLayer) = 0;
+    virtual HRESULT __stdcall GetCurrentLineIndex(long *piLine, long *piIndex) = 0;
+    virtual HRESULT __stdcall GetBehavior(DWORD *pdwBehavior) = 0;
+    virtual HRESULT __stdcall SetBehavior(DWORD dwBehavior) = 0;
+  };
+#pragma endregion
+
+  // ================================ IUnknown ================================
+#pragma region
+  const GUID IID_IUnknown = { 0x00000000, 0x0000, 0x0000, { 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46 } };
+
+  struct IUnknown {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsTextLayer ================================
+#pragma region
+  const GUID IID_IVsTextLayer = { 0x0E145D3F, 0xBEFC, 0x4FD9, { 0x87, 0x14, 0xb0, 0x1a, 0xe8, 0x9f, 0x43, 0x96 } };
+
+  struct MARKERDATA {
+    long iTopLine;
+    long iBottomLine;
+    long iCount;
+    IVsTextLayerMarker **rgpMarker;
+    BOOL *rgfLineMarked;
+    IVsTextLayer *pLayer;
+    MARKERDATA *pNext;
+  };
+
+  enum EOLTYPE {
+    eolCRLF = 0,
+    eolCR = (eolCRLF + 1),
+    eolLF = (eolCR + 1),
+    eolUNI_LINESEP = (eolLF + 1),
+    eolUNI_PARASEP = (eolUNI_LINESEP + 1),
+    eolEOF = (eolUNI_PARASEP + 1),
+    eolNONE = (eolEOF + 1),
+    MAX_EOLTYPES = (eolNONE + 1)
+  };
+
+  struct AtomicText {
+    AtomicText *pNext;
+    long iIndex;
+    const WCHAR *pszAtomicText;
+    IUnknown *punkAtom;
+  };
+
+  struct LINEDATAEX {
+    long iLength;
+    const WCHAR *pszText;
+    EOLTYPE iEolType;
+    const ULONG *pAttributes;
+    USHORT dwFlags;
+    USHORT dwReserved;
+    AtomicText *pAtomicTextChain;
+  };
+
+  struct IVsTextLayer {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsTextLayer ==
+    virtual HRESULT __stdcall LocalLineIndexToBase(long iLocalLine, long iLocalIndex, long *piBaseLine, long *piBaseIndex) = 0;
+    virtual HRESULT __stdcall BaseLineIndexToLocal(long iBaseLine, long iBaseIndex, long *piLocalLine, long *piLocalIndex) = 0;
+    virtual HRESULT __stdcall LocalLineIndexToDeeperLayer(IVsTextLayer *pTargetLayer, long iLocalLine, long iLocalIndex, long *piTargetLine, long *piTargetIndex) = 0;
+    virtual HRESULT __stdcall DeeperLayerLineIndexToLocal(DWORD dwFlags, IVsTextLayer *pTargetLayer, long iLayerLine, long iLayerIndex, long *piLocalLine, long *piLocalIndex) = 0;
+    virtual HRESULT __stdcall GetBaseBuffer(IVsTextLines **ppiBuf) = 0;
+    virtual HRESULT __stdcall LockBufferEx(DWORD dwFlags) = 0;
+    virtual HRESULT __stdcall UnlockBufferEx(DWORD dwFlags) = 0;
+    virtual HRESULT __stdcall GetLengthOfLine(long iLine, long *piLength) = 0;
+    virtual HRESULT __stdcall GetLineCount(long *piLineCount) = 0;
+    virtual HRESULT __stdcall GetLastLineIndex(long *piLine, long *piIndex) = 0;
+    virtual HRESULT __stdcall GetMarkerData(long iTopLine, long iBottomLine, MARKERDATA *pMarkerData) = 0;
+    virtual HRESULT __stdcall ReleaseMarkerData(MARKERDATA *pMarkerData) = 0;
+    virtual HRESULT __stdcall GetLineDataEx(DWORD dwFlags, long iLine, long iStartIndex, long iEndIndex, LINEDATAEX *pLineData, MARKERDATA *pMarkerData) = 0;
+    virtual HRESULT __stdcall ReleaseLineDataEx(LINEDATAEX *pLineData) = 0;
+    virtual HRESULT __stdcall GetLineText(long iStartLine, long iStartIndex, long iEndLine, long iEndIndex, BSTR *pbstrBuf) = 0;
+    virtual HRESULT __stdcall CopyLineText(long iStartLine, long iStartIndex, long iEndLine, long iEndIndex, LPWSTR pszBuf, long *pcchBuf) = 0;
+    virtual HRESULT __stdcall ReplaceLines(long iStartLine, long iStartIndex, long iEndLine, long iEndIndex, LPCWSTR pszText, long iNewLen, TextSpan *pChangedSpan) = 0;
+    virtual HRESULT __stdcall CanReplaceLines(long iStartLine, long iStartIndex, long iEndLine, long iEndIndex, long iNewLen) = 0;
+    virtual HRESULT __stdcall CreateTrackingPoint(long iLine, long iIndex, IVsTextTrackingPoint **ppMarker) = 0;
+    virtual HRESULT __stdcall EnumLayerMarkers(long iStartLine, long iStartIndex, long iEndLine, long iEndIndex, long iMarkerType, DWORD dwFlags, IVsEnumLayerMarkers **ppEnum) = 0;
+    virtual HRESULT __stdcall ReplaceLinesEx(DWORD dwFlags, long iStartLine, long iStartIndex, long iEndLine, long iEndIndex, LPCWSTR pszText, long iNewLen, TextSpan *pChangedSpan) = 0;
+    virtual HRESULT __stdcall MapLocalSpansToTextOriginatingLayer(DWORD dwFlags, IVsEnumTextSpans *pLocalSpanEnum, IVsTextLayer **ppTargetLayer, IVsEnumTextSpans **ppTargetSpanEnum) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsTextMarker ================================
+#pragma region
+  const GUID IID_IVsTextMarker = { 0x950122D9, 0x1A51, 0x43CA, { 0x8c, 0xed, 0xb5, 0xd9, 0xe4, 0x2d, 0xe1, 0xb5 } };
+
+  struct IVsTextMarker {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsTextMarker ==
+    virtual HRESULT __stdcall GetType(long *piMarkerType) = 0;
+    virtual HRESULT __stdcall SetType(long iMarkerType) = 0;
+    virtual HRESULT __stdcall GetVisualStyle(DWORD *pdwFlags) = 0;
+    virtual HRESULT __stdcall SetVisualStyle(DWORD dwFlags) = 0;
+    virtual HRESULT __stdcall Invalidate() = 0;
+    virtual HRESULT __stdcall DrawGlyph(HDC hdc, RECT *pRect) = 0;
+    virtual HRESULT __stdcall GetTipText(BSTR *pbstrText) = 0;
+    virtual HRESULT __stdcall UnadviseClient() = 0;
+    virtual HRESULT __stdcall GetMarkerCommandInfo(long iItem, BSTR *pbstrText, DWORD *pcmdf) = 0;
+    virtual HRESULT __stdcall ExecMarkerCommand(long iItem) = 0;
+    virtual HRESULT __stdcall GetBehavior(DWORD *pdwBehavior) = 0;
+    virtual HRESULT __stdcall SetBehavior(DWORD dwBehavior) = 0;
+    virtual HRESULT __stdcall GetPriorityIndex(long *piPriorityIndex) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsTextLayerMarker ================================
+#pragma region
+  const GUID IID_IVsTextLayerMarker = { 0x28C149D2, 0x8FCB, 0x4AB3, { 0x85, 0x84, 0x9a, 0x27, 0x47, 0xf3, 0xf8, 0xfc } };
+
+  struct IVsTextLayerMarker {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsTextMarker ==
+    virtual HRESULT __stdcall GetType(long *piMarkerType) = 0;
+    virtual HRESULT __stdcall SetType(long iMarkerType) = 0;
+    virtual HRESULT __stdcall GetVisualStyle(DWORD *pdwFlags) = 0;
+    virtual HRESULT __stdcall SetVisualStyle(DWORD dwFlags) = 0;
+    virtual HRESULT __stdcall Invalidate() = 0;
+    virtual HRESULT __stdcall DrawGlyph(HDC hdc, RECT *pRect) = 0;
+    virtual HRESULT __stdcall GetTipText(BSTR *pbstrText) = 0;
+    virtual HRESULT __stdcall UnadviseClient() = 0;
+    virtual HRESULT __stdcall GetMarkerCommandInfo(long iItem, BSTR *pbstrText, DWORD *pcmdf) = 0;
+    virtual HRESULT __stdcall ExecMarkerCommand(long iItem) = 0;
+    virtual HRESULT __stdcall GetBehavior(DWORD *pdwBehavior) = 0;
+    virtual HRESULT __stdcall SetBehavior(DWORD dwBehavior) = 0;
+    virtual HRESULT __stdcall GetPriorityIndex(long *piPriorityIndex) = 0;
+
+    // == IVsTextLayerMarker ==
+    virtual HRESULT __stdcall GetTextLayer(IVsTextLayer **ppLayer) = 0;
+    virtual HRESULT __stdcall ResetSpan(long iStartLine, long iStartIndex, long iEndLine, long iEndIndex) = 0;
+    virtual HRESULT __stdcall GetCurrentSpan(TextSpan *pSpan) = 0;
+    virtual HRESULT __stdcall IsInvalidated() = 0;
+    virtual HRESULT __stdcall QueryClientInterface(const IID &iid, void **ppClient) = 0;
+    virtual HRESULT __stdcall DrawGlyphEx(DWORD dwFlags, HDC hdc, RECT *pRect, long iLineHeight) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsTextBuffer ================================
+#pragma region
+  const GUID IID_IVsTextBuffer = { 0xC08E5275, 0x0D26, 0x4DE9, { 0x88, 0x92, 0x99, 0x40, 0x24, 0xc2, 0x37, 0x50 } };
+
+  struct IVsTextBuffer {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsTextBuffer ==
+    virtual HRESULT __stdcall LockBuffer() = 0;
+    virtual HRESULT __stdcall UnlockBuffer() = 0;
+    virtual HRESULT __stdcall InitializeContent(const WCHAR *pszText, long iLength) = 0;
+    virtual HRESULT __stdcall GetStateFlags(DWORD *pdwReadOnlyFlags) = 0;
+    virtual HRESULT __stdcall SetStateFlags(DWORD dwReadOnlyFlags) = 0;
+    virtual HRESULT __stdcall GetPositionOfLine(long iLine, long *piPosition) = 0;
+    virtual HRESULT __stdcall GetPositionOfLineIndex(long iLine, long iIndex, long *piPosition) = 0;
+    virtual HRESULT __stdcall GetLineIndexOfPosition(long iPosition, long *piLine, long *piColumn) = 0;
+    virtual HRESULT __stdcall GetLengthOfLine(long iLine, long *piLength) = 0;
+    virtual HRESULT __stdcall GetLineCount(long *piLineCount) = 0;
+    virtual HRESULT __stdcall GetSize(long *piLength) = 0;
+    virtual HRESULT __stdcall GetLanguageServiceID(GUID *pguidLangService) = 0;
+    virtual HRESULT __stdcall SetLanguageServiceID(const GUID &guidLangService) = 0;
+    virtual HRESULT __stdcall GetUndoManager(IOleUndoManager **ppUndoManager) = 0;
+    virtual HRESULT __stdcall Reserved1() = 0;
+    virtual HRESULT __stdcall Reserved2() = 0;
+    virtual HRESULT __stdcall Reserved3() = 0;
+    virtual HRESULT __stdcall Reserved4() = 0;
+    virtual HRESULT __stdcall Reload(BOOL fUndoable) = 0;
+    virtual HRESULT __stdcall LockBufferEx(DWORD dwFlags) = 0;
+    virtual HRESULT __stdcall UnlockBufferEx(DWORD dwFlags) = 0;
+    virtual HRESULT __stdcall GetLastLineIndex(long *piLine, long *piIndex) = 0;
+    virtual HRESULT __stdcall Reserved5() = 0;
+    virtual HRESULT __stdcall Reserved6() = 0;
+    virtual HRESULT __stdcall Reserved7() = 0;
+    virtual HRESULT __stdcall Reserved8() = 0;
+    virtual HRESULT __stdcall Reserved9() = 0;
+    virtual HRESULT __stdcall Reserved10() = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsTextLines ================================
+#pragma region
+  const GUID IID_IVsTextLines = { 0xECF3E19D, 0x149C, 0x43AA, { 0x80, 0xc2, 0xd0, 0xa4, 0x69, 0x46, 0xda, 0xa3 } };
+
+  struct LINEDATA {
+    long iLength;
+    const WCHAR *pszText;
+    const ULONG *pAttributes;
+    EOLTYPE iEolType;
+    BOOL fMarkers;
+  };
+
+  struct IVsTextLines {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsTextBuffer ==
+    virtual HRESULT __stdcall LockBuffer() = 0;
+    virtual HRESULT __stdcall UnlockBuffer() = 0;
+    virtual HRESULT __stdcall InitializeContent(const WCHAR *pszText, long iLength) = 0;
+    virtual HRESULT __stdcall GetStateFlags(DWORD *pdwReadOnlyFlags) = 0;
+    virtual HRESULT __stdcall SetStateFlags(DWORD dwReadOnlyFlags) = 0;
+    virtual HRESULT __stdcall GetPositionOfLine(long iLine, long *piPosition) = 0;
+    virtual HRESULT __stdcall GetPositionOfLineIndex(long iLine, long iIndex, long *piPosition) = 0;
+    virtual HRESULT __stdcall GetLineIndexOfPosition(long iPosition, long *piLine, long *piColumn) = 0;
+    virtual HRESULT __stdcall GetLengthOfLine(long iLine, long *piLength) = 0;
+    virtual HRESULT __stdcall GetLineCount(long *piLineCount) = 0;
+    virtual HRESULT __stdcall GetSize(long *piLength) = 0;
+    virtual HRESULT __stdcall GetLanguageServiceID(GUID *pguidLangService) = 0;
+    virtual HRESULT __stdcall SetLanguageServiceID(const GUID &guidLangService) = 0;
+    virtual HRESULT __stdcall GetUndoManager(IOleUndoManager **ppUndoManager) = 0;
+    virtual HRESULT __stdcall Reserved1() = 0;
+    virtual HRESULT __stdcall Reserved2() = 0;
+    virtual HRESULT __stdcall Reserved3() = 0;
+    virtual HRESULT __stdcall Reserved4() = 0;
+    virtual HRESULT __stdcall Reload(BOOL fUndoable) = 0;
+    virtual HRESULT __stdcall LockBufferEx(DWORD dwFlags) = 0;
+    virtual HRESULT __stdcall UnlockBufferEx(DWORD dwFlags) = 0;
+    virtual HRESULT __stdcall GetLastLineIndex(long *piLine, long *piIndex) = 0;
+    virtual HRESULT __stdcall Reserved5() = 0;
+    virtual HRESULT __stdcall Reserved6() = 0;
+    virtual HRESULT __stdcall Reserved7() = 0;
+    virtual HRESULT __stdcall Reserved8() = 0;
+    virtual HRESULT __stdcall Reserved9() = 0;
+    virtual HRESULT __stdcall Reserved10() = 0;
+
+    // == IVsTextLines ==
+    virtual HRESULT __stdcall GetMarkerData(long iTopLine, long iBottomLine, MARKERDATA *pMarkerData) = 0;
+    virtual HRESULT __stdcall ReleaseMarkerData(MARKERDATA *pMarkerData) = 0;
+    virtual HRESULT __stdcall GetLineData(long iLine, LINEDATA *pLineData, MARKERDATA *pMarkerData) = 0;
+    virtual HRESULT __stdcall ReleaseLineData(LINEDATA *pLineData) = 0;
+    virtual HRESULT __stdcall GetLineText(long iStartLine, long iStartIndex, long iEndLine, long iEndIndex, BSTR *pbstrBuf) = 0;
+    virtual HRESULT __stdcall CopyLineText(long iStartLine, long iStartIndex, long iEndLine, long iEndIndex, LPWSTR pszBuf, long *pcchBuf) = 0;
+    virtual HRESULT __stdcall ReplaceLines(long iStartLine, long iStartIndex, long iEndLine, long iEndIndex, LPCWSTR pszText, long iNewLen, TextSpan *pChangedSpan) = 0;
+    virtual HRESULT __stdcall CanReplaceLines(long iStartLine, long iStartIndex, long iEndLine, long iEndIndex, long iNewLen) = 0;
+    virtual HRESULT __stdcall CreateLineMarker(long iMarkerType, long iStartLine, long iStartIndex, long iEndLine, long iEndIndex, IVsTextMarkerClient *pClient, IVsTextLineMarker **ppMarker) = 0;
+    virtual HRESULT __stdcall EnumMarkers(long iStartLine, long iStartIndex, long iEndLine, long iEndIndex, long iMarkerType, DWORD dwFlags, IVsEnumLineMarkers **ppEnum) = 0;
+    virtual HRESULT __stdcall FindMarkerByLineIndex(long iMarkerType, long iStartingLine, long iStartingIndex, DWORD dwFlags, IVsTextLineMarker **ppMarker) = 0;
+    virtual HRESULT __stdcall AdviseTextLinesEvents(IVsTextLinesEvents *pSink, DWORD *pdwCookie) = 0;
+    virtual HRESULT __stdcall UnadviseTextLinesEvents(DWORD dwCookie) = 0;
+    virtual HRESULT __stdcall GetPairExtents(const TextSpan *pSpanIn, TextSpan *pSpanOut) = 0;
+    virtual HRESULT __stdcall ReloadLines(long iStartLine, long iStartIndex, long iEndLine, long iEndIndex, LPCWSTR pszText, long iNewLen, TextSpan *pChangedSpan) = 0;
+    virtual HRESULT __stdcall IVsTextLinesReserved1(long iLine, LINEDATA *pLineData, BOOL fAttributes) = 0;
+    virtual HRESULT __stdcall GetLineDataEx(DWORD dwFlags, long iLine, long iStartIndex, long iEndIndex, LINEDATAEX *pLineData, MARKERDATA *pMarkerData) = 0;
+    virtual HRESULT __stdcall ReleaseLineDataEx(LINEDATAEX *pLineData) = 0;
+    virtual HRESULT __stdcall CreateEditPoint(long iLine, long iIndex, IDispatch **ppEditPoint) = 0;
+    virtual HRESULT __stdcall ReplaceLinesEx(DWORD dwFlags, long iStartLine, long iStartIndex, long iEndLine, long iEndIndex, LPCWSTR pszText, long iNewLen, TextSpan *pChangedSpan) = 0;
+    virtual HRESULT __stdcall CreateTextPoint(long iLine, long iIndex, IDispatch **ppTextPoint) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsOutputWindowPane ================================
+#pragma region
+  const GUID IID_IVsOutputWindowPane = { 0x9B878A55, 0x296A, 0x404D, { 0x80, 0xc4, 0x14, 0x68, 0xbb, 0x7c, 0xdc, 0x43 } };
+
+  enum VSTASKPRIORITY {
+    TP_HIGH = 0,
+    TP_NORMAL = (TP_HIGH + 1),
+    TP_LOW = (TP_NORMAL + 1)
+  };
+
+  enum VSTASKCATEGORY {
+    CAT_ALL = 1,
+    CAT_BUILDCOMPILE = 10,
+    CAT_COMMENTS = 20,
+    CAT_CODESENSE = 30,
+    CAT_SHORTCUTS = 40,
+    CAT_USER = 50,
+    CAT_MISC = 60,
+    CAT_HTML = 70
+  };
+
+  enum VSTASKBITMAP {
+    BMP_COMPILE = -1,
+    BMP_SQUIGGLE = -2,
+    BMP_COMMENT = -3,
+    BMP_SHORTCUT = -4,
+    BMP_USER = -5
+  };
+
+  struct IVsOutputWindowPane {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsOutputWindowPane ==
+    virtual HRESULT __stdcall OutputString(LPCOLESTR pszOutputString) = 0;
+    virtual HRESULT __stdcall Activate() = 0;
+    virtual HRESULT __stdcall Hide() = 0;
+    virtual HRESULT __stdcall Clear() = 0;
+    virtual HRESULT __stdcall FlushToTaskList() = 0;
+    virtual HRESULT __stdcall OutputTaskItemString(LPCOLESTR pszOutputString, VSTASKPRIORITY nPriority, VSTASKCATEGORY nCategory, LPCOLESTR pszSubcategory, VSTASKBITMAP nBitmap, LPCOLESTR pszFilename, ULONG nLineNum, LPCOLESTR pszTaskItemText) = 0;
+    virtual HRESULT __stdcall OutputTaskItemStringEx(LPCOLESTR pszOutputString, VSTASKPRIORITY nPriority, VSTASKCATEGORY nCategory, LPCOLESTR pszSubcategory, VSTASKBITMAP nBitmap, LPCOLESTR pszFilename, ULONG nLineNum, LPCOLESTR pszTaskItemText, LPCOLESTR pszLookupKwd) = 0;
+    virtual HRESULT __stdcall GetName(BSTR *pbstrPaneName) = 0;
+    virtual HRESULT __stdcall SetName(LPCOLESTR pszPaneName) = 0;
+    virtual HRESULT __stdcall OutputStringThreadSafe(LPCOLESTR pszOutputString) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsBuildStatusCallback ================================
+#pragma region
+  const GUID IID_IVsBuildStatusCallback = { 0xA17326AD, 0xC97B, 0x4278, { 0x86, 0xe2, 0x72, 0x16, 0x3c, 0x4c, 0x6a, 0x8c } };
+
+  struct IVsBuildStatusCallback {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsBuildStatusCallback ==
+    virtual HRESULT __stdcall BuildBegin(BOOL *pfContinue) = 0;
+    virtual HRESULT __stdcall BuildEnd(BOOL fSuccess) = 0;
+    virtual HRESULT __stdcall Tick(BOOL *pfContinue) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsBuildableProjectCfg ================================
+#pragma region
+  const GUID IID_IVsBuildableProjectCfg = { 0x8588E475, 0xBB33, 0x4763, { 0xb4, 0xba, 0x03, 0x22, 0xf8, 0x39, 0xaa, 0x3c } };
+
+  struct IVsBuildableProjectCfg {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsBuildableProjectCfg ==
+    virtual HRESULT __stdcall get_ProjectCfg(IVsProjectCfg **ppIVsProjectCfg) = 0;
+    virtual HRESULT __stdcall AdviseBuildStatusCallback(IVsBuildStatusCallback *pIVsBuildStatusCallback, DWORD *pdwCookie) = 0;
+    virtual HRESULT __stdcall UnadviseBuildStatusCallback(DWORD dwCookie) = 0;
+    virtual HRESULT __stdcall StartBuild(IVsOutputWindowPane *pIVsOutputWindowPane, DWORD dwOptions) = 0;
+    virtual HRESULT __stdcall StartClean(IVsOutputWindowPane *pIVsOutputWindowPane, DWORD dwOptions) = 0;
+    virtual HRESULT __stdcall StartUpToDateCheck(IVsOutputWindowPane *pIVsOutputWindowPane, DWORD dwOptions) = 0;
+    virtual HRESULT __stdcall QueryStatus(BOOL *pfBuildDone) = 0;
+    virtual HRESULT __stdcall Stop(BOOL fSync) = 0;
+    virtual HRESULT __stdcall Wait(DWORD dwMilliseconds, BOOL fTickWhenMessageQNotEmpty) = 0;
+    virtual HRESULT __stdcall QueryStartBuild(DWORD dwOptions, BOOL *pfSupported, BOOL *pfReady) = 0;
+    virtual HRESULT __stdcall QueryStartClean(DWORD dwOptions, BOOL *pfSupported, BOOL *pfReady) = 0;
+    virtual HRESULT __stdcall QueryStartUpToDateCheck(DWORD dwOptions, BOOL *pfSupported, BOOL *pfReady) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsCfgProvider ================================
+#pragma region
+  const GUID IID_IVsCfgProvider = { 0xEEABD2BE, 0x4F4F, 0x4CCB, { 0x86, 0xad, 0x9f, 0x46, 0x9c, 0x5c, 0x96, 0x86 } };
+
+  enum VSCFGFLAGS {
+    CFGFLAG_CfgsAreNotBrowsable = 0x1,
+    CFGFLAG_CfgsUseIndependentPages = 0x2
+  };
+
+  struct IVsCfgProvider {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsCfgProvider ==
+    virtual HRESULT __stdcall GetCfgs(ULONG celt, IVsCfg *rgpcfg[], ULONG *pcActual, VSCFGFLAGS *prgfFlags) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsProjectCfgProvider ================================
+#pragma region
+  const GUID IID_IVsProjectCfgProvider = { 0x803E46E2, 0x6A0D, 0x4D5D, { 0x9f, 0x84, 0x6c, 0xe1, 0x24, 0x8b, 0x06, 0x8d } };
+
+  struct IVsProjectCfgProvider {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsCfgProvider ==
+    virtual HRESULT __stdcall GetCfgs(ULONG celt, IVsCfg *rgpcfg[], ULONG *pcActual, VSCFGFLAGS *prgfFlags) = 0;
+
+    // == IVsProjectCfgProvider ==
+    virtual HRESULT __stdcall OpenProjectCfg(LPCOLESTR szProjectCfgCanonicalName, IVsProjectCfg **ppIVsProjectCfg) = 0;
+    virtual HRESULT __stdcall get_UsesIndependentConfigurations(BOOL *pfUsesIndependentConfigurations) = 0;
+  };
+#pragma endregion
+
+  // ================================ IEnumHierarchies ================================
+#pragma region
+  const GUID IID_IEnumHierarchies = { 0xBEC77711, 0x2DF9, 0x44d7, { 0xb4, 0x78, 0xa4, 0x53, 0xc2, 0xe8, 0xa1, 0x34 } };
+
+  struct IEnumHierarchies {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IEnumHierarchies ==
+    virtual HRESULT __stdcall Next(ULONG celt, IVsHierarchy **rgelt, ULONG *pceltFetched) = 0;
+    virtual HRESULT __stdcall Skip(ULONG celt) = 0;
+    virtual HRESULT __stdcall Reset() = 0;
+    virtual HRESULT __stdcall Clone(IEnumHierarchies **ppenum) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsWindowFrameEvents ================================
+#pragma region
+  const GUID IID_IVsWindowFrameEvents = { 0x15D6E42B, 0x36AD, 0x4AF9, { 0xa1, 0x44, 0xc6, 0xf0, 0x70, 0x27, 0xa6, 0xed } };
+
+  struct IVsWindowFrameEvents {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsWindowFrameEvents ==
+    virtual HRESULT __stdcall OnFrameCreated(IVsWindowFrame *frame) = 0;
+    virtual HRESULT __stdcall OnFrameDestroyed(IVsWindowFrame *frame) = 0;
+    virtual HRESULT __stdcall OnFrameIsVisibleChanged(IVsWindowFrame *frame, VARIANT_BOOL newIsVisible) = 0;
+    virtual HRESULT __stdcall OnFrameIsOnScreenChanged(IVsWindowFrame *frame, VARIANT_BOOL newIsOnScreen) = 0;
+    virtual HRESULT __stdcall OnActiveFrameChanged(IVsWindowFrame *oldFrame, IVsWindowFrame *newFrame) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsOutput ================================
+#pragma region
+  const GUID IID_IVsOutput = { 0x0238DCC5, 0x62D6, 0x4DAC, { 0xa9, 0x77, 0x2c, 0x6a, 0x36, 0xc5, 0x02, 0xf4 } };
+
+  struct IVsOutput {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsOutput ==
+    virtual HRESULT __stdcall get_DisplayName(BSTR *pbstrDisplayName) = 0;
+    virtual HRESULT __stdcall get_CanonicalName(BSTR *pbstrCanonicalName) = 0;
+    virtual HRESULT __stdcall get_DeploySourceURL(BSTR *pbstrDeploySourceURL) = 0;
+    virtual HRESULT __stdcall get_Type(GUID *pguidType) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsEnumOutputs ================================
+#pragma region
+  const GUID IID_IVsEnumOutputs = { 0x0A8AC2FB, 0x87BC, 0x4795, { 0x8c, 0x8b, 0x47, 0xe8, 0x77, 0xf4, 0x8f, 0xe8 } };
+
+  struct IVsEnumOutputs {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsEnumOutputs ==
+    virtual HRESULT __stdcall Reset() = 0;
+    virtual HRESULT __stdcall Next(ULONG cElements, IVsOutput *rgpIVsOutput[], ULONG *pcElementsFetched) = 0;
+    virtual HRESULT __stdcall Skip(ULONG cElements) = 0;
+    virtual HRESULT __stdcall Clone(IVsEnumOutputs **ppIVsEnumOutputs) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsCfg ================================
+#pragma region
+  const GUID IID_IVsCfg = { 0xB8F932A5, 0x5037, 0x48C9, { 0xab, 0x3a, 0xa4, 0xab, 0xba, 0x79, 0x35, 0x8b } };
+
+  struct IVsCfg {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsCfg ==
+    virtual HRESULT __stdcall get_DisplayName(BSTR *pbstrDisplayName) = 0;
+    virtual HRESULT __stdcall get_IsDebugOnly(BOOL *pfIsDebugOnly) = 0;
+    virtual HRESULT __stdcall get_IsReleaseOnly(BOOL *pfIsReleaseOnly) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsProjectCfg ================================
+#pragma region
+  const GUID IID_IVsProjectCfg = { 0x2DBDF061, 0x439B, 0x4822, { 0x97, 0x27, 0xca, 0x3e, 0xd9, 0x18, 0xb6, 0x58 } };
+
+  struct IVsProjectCfg {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsCfg ==
+    virtual HRESULT __stdcall get_DisplayName(BSTR *pbstrDisplayName) = 0;
+    virtual HRESULT __stdcall get_IsDebugOnly(BOOL *pfIsDebugOnly) = 0;
+    virtual HRESULT __stdcall get_IsReleaseOnly(BOOL *pfIsReleaseOnly) = 0;
+
+    // == IVsProjectCfg ==
+    virtual HRESULT __stdcall EnumOutputs(IVsEnumOutputs **ppIVsEnumOutputs) = 0;
+    virtual HRESULT __stdcall OpenOutput(LPCOLESTR szOutputCanonicalName, IVsOutput **ppIVsOutput) = 0;
+    virtual HRESULT __stdcall get_ProjectCfgProvider(IVsProjectCfgProvider **ppIVsProjectCfgProvider) = 0;
+    virtual HRESULT __stdcall get_BuildableProjectCfg(IVsBuildableProjectCfg **ppIVsBuildableProjectCfg) = 0;
+    virtual HRESULT __stdcall get_CanonicalName(BSTR *pbstrCanonicalName) = 0;
+    virtual HRESULT __stdcall get_Platform(GUID *pguidPlatform) = 0;
+    virtual HRESULT __stdcall get_IsPackaged(BOOL *pfIsPackaged) = 0;
+    virtual HRESULT __stdcall get_IsSpecifyingOutputSupported(BOOL *pfIsSpecifyingOutputSupported) = 0;
+    virtual HRESULT __stdcall get_TargetCodePage(UINT *puiTargetCodePage) = 0;
+    virtual HRESULT __stdcall get_UpdateSequenceNumber(ULARGE_INTEGER *puliUSN) = 0;
+    virtual HRESULT __stdcall get_RootURL(BSTR *pbstrRootURL) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsEnumGuids ================================
+#pragma region
+  const GUID IID_IVsEnumGuids = { 0xBEC804F7, 0xF5DE, 0x4F3E, { 0x8e, 0xbb, 0xda, 0xb2, 0x66, 0x49, 0xf3, 0x3f } };
+
+  struct IVsEnumGuids {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsEnumGuids ==
+    virtual HRESULT __stdcall Next(ULONG celt, GUID rgelt[], ULONG *pceltFetched) = 0;
+    virtual HRESULT __stdcall Skip(ULONG celt) = 0;
+    virtual HRESULT __stdcall Reset() = 0;
+    virtual HRESULT __stdcall Clone(IVsEnumGuids **ppenum) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsSaveOptionsDlg ================================
+#pragma region
+  const GUID IID_IVsSaveOptionsDlg = { 0xC3E2ED14, 0x4E64, 0x4c26, { 0x84, 0xD7, 0x68, 0xcc, 0xd0, 0x71, 0xa0, 0xc8 } };
+
+  struct IVsSaveOptionsDlg {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsSaveOptionsDlg ==
+    virtual HRESULT __stdcall ShowSaveOptionsDlg(DWORD dwReserved, HWND hwndDlgParent, WCHAR *pszFileName) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsUIAccelerator ================================
+#pragma region
+  const GUID IID_IVsUIAccelerator = { 0x4E25556D, 0x941D, 0x4c29, { 0xa1, 0x71, 0x38, 0x4e, 0xa8, 0x4f, 0x67, 0x05 } };
+
+  enum VSUIACCELMODIFIERS {
+    VSAM_NONE = 0,
+    VSAM_SHIFT = 0x1,
+    VSAM_CONTROL = 0x2,
+    VSAM_ALT = 0x4,
+    VSAM_WINDOWS = 0x8
+  };
+
+  struct IVsUIAccelerator {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsUIAccelerator ==
+    virtual HRESULT __stdcall get_Message(MSG *pMsg) = 0;
+    virtual HRESULT __stdcall get_Modifiers(VSUIACCELMODIFIERS *pdwModifiers) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsUIEnumDataSourceVerbs ================================
+#pragma region
+  const GUID IID_IVsUIEnumDataSourceVerbs = { 0x51C2FFFB, 0x35FA, 0x4ad2, { 0x81, 0xb1, 0x11, 0x81, 0x6c, 0x48, 0x2a, 0xaa } };
+
+  struct IVsUIEnumDataSourceVerbs {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsUIEnumDataSourceVerbs ==
+    virtual HRESULT __stdcall Next(ULONG celt, BSTR *rgelt, ULONG *pceltFetched) = 0;
+    virtual HRESULT __stdcall Skip(ULONG celt) = 0;
+    virtual HRESULT __stdcall Reset() = 0;
+    virtual HRESULT __stdcall Clone(IVsUIEnumDataSourceVerbs **ppEnum) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsUIDispatch ================================
+#pragma region
+  const GUID IID_IVsUIDispatch = { 0x0DF3E43A, 0x5356, 0x4A33, { 0x8a, 0xc1, 0x3b, 0xe6, 0xe3, 0x33, 0x7c, 0x37 } };
+
+  struct IVsUIDispatch {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsUIDispatch ==
+    virtual HRESULT __stdcall Invoke(LPCOLESTR verb, VARIANT pvaIn, VARIANT *pvaOut) = 0;
+    virtual HRESULT __stdcall EnumVerbs(IVsUIEnumDataSourceVerbs **ppEnum) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsUISimpleDataSource ================================
+#pragma region
+  const GUID IID_IVsUISimpleDataSource = { 0x110596DC, 0x7A19, 0x4E04, { 0x91, 0x06, 0x1d, 0xb0, 0x58, 0x0f, 0x77, 0xe9 } };
+
+  struct IVsUISimpleDataSource {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsUIDispatch ==
+    virtual HRESULT __stdcall Invoke(LPCOLESTR verb, VARIANT pvaIn, VARIANT *pvaOut) = 0;
+    virtual HRESULT __stdcall EnumVerbs(IVsUIEnumDataSourceVerbs **ppEnum) = 0;
+
+    // == IVsUISimpleDataSource ==
+    virtual HRESULT __stdcall Close() = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsUIElement ================================
+#pragma region
+  const GUID IID_IVsUIElement = { 0x62C0A03E, 0x4979, 0x4b4e, { 0x90, 0xf0, 0x56, 0xdf, 0x90, 0x52, 0x1f, 0x79 } };
+
+  struct IVsUIElement {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsUIElement ==
+    virtual HRESULT __stdcall get_DataSource(IVsUISimpleDataSource **ppDataSource) = 0;
+    virtual HRESULT __stdcall put_DataSource(IVsUISimpleDataSource *pDataSource) = 0;
+    virtual HRESULT __stdcall TranslateAccelerator(IVsUIAccelerator *pAccel) = 0;
+    virtual HRESULT __stdcall GetUIObject(IUnknown **ppUnk) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsToolbarTrayHost ================================
+#pragma region
+  const GUID IID_IVsToolbarTrayHost = { 0x2B3321EE, 0x693F, 0x4b46, { 0x95, 0x36, 0xe4, 0x4d, 0xad, 0x8c, 0x6e, 0x60 } };
+
+  struct IVsToolbarTrayHost {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsToolbarTrayHost ==
+    virtual HRESULT __stdcall AddToolbar(const GUID &pGuid, DWORD dwId) = 0;
+    virtual HRESULT __stdcall GetToolbarTray(IVsUIElement **ppToolbarTray) = 0;
+    virtual HRESULT __stdcall Close() = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsImageButton ================================
+#pragma region
+  const GUID IID_IVsImageButton = { 0x61DF9CCE, 0xE88E, 0x4fe2, { 0x99, 0x76, 0x77, 0xa4, 0xf4, 0x78, 0xe2, 0x4b } };
+
+  struct VSDRAWITEMSTRUCT {
+    UINT CtlType;
+    UINT CtlID;
+    UINT itemID;
+    UINT itemAction;
+    UINT itemState;
+    HWND hwndItem;
+    HDC hDC;
+    RECT rcItem;
+    ULONG_PTR itemData;
+  };
+
+  struct IVsImageButton {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsImageButton ==
+    virtual HRESULT __stdcall Draw(VSDRAWITEMSTRUCT *pDrawItemStruct, BOOL fHot) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsGradient ================================
+#pragma region
+  const GUID IID_IVsGradient = { 0xfd3f680a, 0xd5c1, 0x437a, { 0x8a, 0x21, 0x80, 0x84, 0x31, 0x0b, 0xf0, 0x37 } };
+
+  struct IVsGradient {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsGradient ==
+    virtual HRESULT __stdcall DrawGradient(HWND hwnd, HDC hdc, RECT *gradientRect, RECT *sliceRect) = 0;
+    virtual HRESULT __stdcall GetGradientVector(int cVector, COLORREF *rgVector) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsBatchProjectActionContext ================================
+#pragma region
+  const GUID IID_IVsBatchProjectActionContext = { 0x49ED97F3, 0xEAE0, 0x47AC, { 0x9A, 0x2E, 0xdc, 0x15, 0xd0, 0x45, 0x9f, 0x7b } };
+
+  enum VSBatchProjectAction {
+    BPA_NONE = 0,
+    BPA_UNLOAD = 1,
+    BPA_LOAD = 2,
+    BPA_RELOAD = 3,
+    BPA_RELOADSOLUTION = 4
+  };
+
+  enum VSBatchProjectActionResult {
+    BPAR_UNCHANGED = 0,
+    BPAR_UNLOADED = 1,
+    BPAR_RELOADED = 3,
+    BPAR_SELFRELOADED = 4,
+    BPAR_ERROR = 5
+  };
+
+  struct IVsBatchProjectActionContext {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsBatchProjectActionContext ==
+    virtual HRESULT __stdcall GetAction(VSBatchProjectAction *pAction) = 0;
+    virtual HRESULT __stdcall GetProjectsCount(DWORD *pdwProjects) = 0;
+    virtual HRESULT __stdcall GetProjectsInfo(DWORD dwProjects, GUID rgProjectsGuid[], VSBatchProjectActionResult rgExpectedResult[]) = 0;
+    virtual HRESULT __stdcall GetCurrentResult(const GUID &guidProject, VSBatchProjectActionResult *pResult) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsPropertyBag ================================
+#pragma region
+  const GUID IID_IVsPropertyBag = { 0xaaeeac4c, 0x3bf3, 0x492c, { 0x92, 0x7d, 0x84, 0xab, 0x7d, 0x93, 0xd6, 0xdf } };
+
+  struct IVsPropertyBag {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsPropertyBag ==
+    virtual HRESULT __stdcall GetValue(LPCOLESTR szName, VARIANT *pVarValue) = 0;
+    virtual HRESULT __stdcall SetValue(LPCOLESTR szName, VARIANT *pVarValue) = 0;
+  };
+#pragma endregion
+
+    // ================================ IVsBrowseProjectLocation ================================
+#pragma region
+    const GUID IID_IVsBrowseProjectLocation = { 0x368FC032, 0xAE91, 0x44a2, { 0xbe, 0x6b, 0x09, 0x3a, 0x8a, 0x9e, 0x63, 0xcc } };
+
+  struct IVsBrowseProjectLocation {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsBrowseProjectLocation ==
+    virtual HRESULT __stdcall BrowseProjectLocation(LPCOLESTR pszStartDirectory, BSTR *pbstrProjectLocation) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsUpdateSolutionEventsAsyncCallback ================================
+#pragma region
+  const GUID IID_IVsUpdateSolutionEventsAsyncCallback = { 0x02D0878C, 0x53F5, 0x4CE9, { 0xb5, 0x5c, 0x35, 0x77, 0xda, 0xe6, 0x47, 0x61 } };
+
+  struct IVsUpdateSolutionEventsAsyncCallback {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsUpdateSolutionEventsAsyncCallback ==
+    virtual HRESULT __stdcall CompleteLastUpdateAction() = 0;
+  };
+#pragma endregion
+
+    // ================================ IVsUpdateSolutionEventsAsync ================================
+#pragma region
+    const GUID IID_IVsUpdateSolutionEventsAsync = { 0x703ECC2C, 0x7631, 0x46A9, { 0xad, 0x1e, 0x19, 0xd9, 0x59, 0x2c, 0x7a, 0x6b } };
+
+  struct IVsUpdateSolutionEventsAsync {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsUpdateSolutionEventsAsync ==
+    virtual HRESULT __stdcall UpdateSolution_EndLastUpdateActionAsync(IVsUpdateSolutionEventsAsyncCallback *pCallback) = 0;
+  };
+#pragma endregion
+
+      // ================================ IVsTaskBody ================================
+#pragma region
+  const GUID IID_IVsTaskBody = { 0x05a07459, 0x551f, 0x4cdf, { 0xb3, 0x8a, 0x16, 0x08, 0x9d, 0x08, 0x31, 0x10 } };
+
+  struct IVsTaskBody {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsTaskBody ==
+    virtual HRESULT __stdcall OnContextChanged(GUID uiContext, VARIANT_BOOL active) = 0;
+  };
+#pragma endregion
+
+      // ================================ IVsTask ================================
+#pragma region
+  const GUID IID_IVsTask = { 0x0b98eab8, 0x00bb, 0x45d0, { 0xae, 0x2f, 0x3d, 0xe3, 0x5c, 0xd6, 0x82, 0x35 } };
+
+  // From Microsoft.VisualStudio.Shell.Interop.11.0.xml
+  // Specifies how the task is run.
+  enum VSTASKRUNCONTEXT {
+    // Runs the task on the background thread pool with normal priority.
+    VSTC_BACKGROUNDTHREAD = 0,
+    // Runs the task on UI thread using RPC callback to be executed as soon as possible. Note: This context may cause reentrancy.
+    VSTC_UITHREAD_SEND = 1,
+    // Runs the task on the UI thread using background priority(that is, below user input). Tasks are scheduled even while modal dialogs are open. Tasks are scheduled to occur when no user input is pending, plus a short delay. Appropriate for short tasks or slightly longer tasks.
+    VSTC_UITHREAD_BACKGROUND_PRIORITY = 2,
+    // Runs the task on the UI thread when Visual Studio is idle. Tasks are not scheduled till most modal dialogs have been dismissed. Appropriate for very short running tasks.
+    VSTC_UITHREAD_IDLE_PRIORITY = 3,
+    // Runs the task on the current context(that is, the UI thread or the background thread).
+    VSTC_CURRENTCONTEXT = 4,
+    // Runs the task on background thread pool and sets the background mode on the thread while the task is running. This is useful for IO heavy background tasks that are not time critical.
+    VSTC_BACKGROUNDTHREAD_LOW_IO_PRIORITY = 5,
+    // Runs the task on UI thread using Dispatcher with Normal priority.
+    VSTC_UITHREAD_NORMAL_PRIORITY = 6
+  };
+
+  enum VSTASKCONTINUATIONOPTIONS {
+    VSTCO_None = 0,
+    VSTCO_PreferFairness = 1,
+    VSTCO_LongRunning = 2,
+    VSTCO_AttachedToParent = 4,
+    VSTCO_DenyChildAttach = 8,
+    VSTCO_LazyCancelation = 32,
+    VSTCO_NotOnRanToCompletion = 0x10000,
+    VSTCO_NotOnFaulted = 0x20000,
+    VSTCO_OnlyOnCanceled = 0x30000,
+    VSTCO_NotOnCanceled = 0x40000,
+    VSTCO_OnlyOnFaulted = 0x50000,
+    VSTCO_OnlyOnRanToCompletion = 0x60000,
+    VSTCO_ExecuteSynchronously = 0x80000,
+    VSTCO_IndependentlyCanceled = 0x40000000,
+    VSTCO_NotCancelable = 0x80000000,
+    VSTCO_Default = VSTCO_NotOnFaulted
+  };
+
+  enum VSTASKWAITOPTIONS {
+    VSTWO_None = 0,
+    VSTWO_AbortOnTaskCancellation = 0x1
+  };
+
+  struct IVsTask {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsTask ==
+    virtual HRESULT __stdcall ContinueWith(VSTASKRUNCONTEXT context, IVsTaskBody *pTaskBody, IVsTask **ppTask) = 0;
+    virtual HRESULT __stdcall ContinueWithEx(VSTASKRUNCONTEXT context, VSTASKCONTINUATIONOPTIONS options, IVsTaskBody *pTaskBody, VARIANT pAsyncState, IVsTask **ppTask) = 0;
+    virtual HRESULT __stdcall Start() = 0;
+    virtual HRESULT __stdcall Cancel() = 0;
+    virtual HRESULT __stdcall GetResult(VARIANT *pResult) = 0;
+    virtual HRESULT __stdcall AbortIfCanceled() = 0;
+    virtual HRESULT __stdcall Wait() = 0;
+    virtual HRESULT __stdcall WaitEx(int millisecondsTimeout, VSTASKWAITOPTIONS options, VARIANT_BOOL *pTaskCompleted) = 0;
+    virtual HRESULT __stdcall get_IsFaulted(VARIANT_BOOL *pResult) = 0;
+    virtual HRESULT __stdcall get_IsCompleted(VARIANT_BOOL *pResult) = 0;
+    virtual HRESULT __stdcall get_IsCanceled(VARIANT_BOOL *pResult) = 0;
+    virtual HRESULT __stdcall get_AsyncState(VARIANT *pAsyncState) = 0;
+    virtual HRESULT __stdcall get_Description(BSTR *ppDescriptionText) = 0;
+    virtual HRESULT __stdcall put_Description(LPCOLESTR pDescriptionText) = 0;
+  };
+#pragma endregion
+
+    // ================================ IVsUIContextEvents ================================
+#pragma region
+  const GUID IID_IVsUIContextEvents = { 0x0393d191, 0x94ac, 0x4997, { 0x93, 0x10, 0x2e, 0xac, 0x67, 0x49, 0x58, 0x16 } };
+
+  struct IVsUIContextEvents {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsUIContextEvents ==
+    virtual HRESULT __stdcall OnContextChanged(GUID uiContext, VARIANT_BOOL active) = 0;
+  };
+#pragma endregion
+
+  // ================================ IServiceProvider ================================
+#pragma region
+  const GUID IID_IServiceProvider = { 0x6d5140c1, 0x7436, 0x11ce, { 0x80, 0x34, 0x00, 0xaa, 0x00, 0x60, 0x09, 0xfa } };
+
+  struct IServiceProvider {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IServiceProvider ==
+    virtual HRESULT __stdcall QueryService(const GUID &guidService, const IID &riid, void **ppvObject) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsWindowFrame ================================
+#pragma region 
+  const GUID IID_IVsWindowFrame = { 0x11138F8A, 0x38C0, 0x4436, { 0xB5, 0xA6, 0x2f, 0x5E, 0xF2, 0xC3, 0xE2, 0x42 } };
+
+  enum VSRDTSAVEOPTIONS {
+    RDTSAVEOPT_SaveIfDirty = 0,
+    RDTSAVEOPT_PromptSave = 0x1,
+    RDTSAVEOPT_ForceSave = 0x2,
+    RDTSAVEOPT_SaveNoChildren = 0x4,
+    RDTSAVEOPT_SaveOnlyChildren = 0x8,
+    RDTSAVEOPT_ActivateDocOnErr = 0x10,
+    RDTSAVEOPT_DocClose = 0x10000,
+    RDTSAVEOPT_Reserved = 0xffff0000
+  };
+
+  enum FRAMECLOSE {
+    FRAMECLOSE_NoSave = (0x100 | RDTSAVEOPT_DocClose),
+    FRAMECLOSE_SaveIfDirty = (0x200 | RDTSAVEOPT_DocClose),
+    FRAMECLOSE_PromptSave = (0x400 | RDTSAVEOPT_DocClose)
+  };
+
+  enum VSSETFRAMEPOS {
+    SFP_maskFrameMode = 0xf,
+    SFP_fDock = 0x1,
+    SFP_fTab = 0x2,
+    SFP_fFloat = 0x3,
+    SFP_fMdiChild = 0x4,
+    SFP_maskPosition = 0xf0,
+    SFP_fDockTop = 0x10,
+    SFP_fDockBottom = 0x20,
+    SFP_fDockLeft = 0x30,
+    SFP_fDockRight = 0x40,
+    SFP_fTabFirst = 0x10,
+    SFP_fTabLast = 0x20,
+    SFP_fTabPrevious = 0x30,
+    SFP_fTabNext = 0x40,
+    SFP_fSize = 0x40000000,
+    SFP_fMove = 0x80000000
+  };
+
+  enum VSFPROPID {
+    VSFPROPID_NIL = -1,
+    VSFPROPID_LAST = -3000,
+    VSFPROPID_Type = -3000,
+    VSFPROPID_DocView = -3001,
+    VSFPROPID_SPFrame = -3002,
+    VSFPROPID_SPProjContext = -3003,
+    VSFPROPID_Caption = -3004,
+    VSFPROPID_WindowState = -3007,
+    VSFPROPID_FrameMode = -3008,
+    VSFPROPID_IsWindowTabbed = -3009,
+    VSFPROPID_UserContext = -3010,
+    VSFPROPID_ViewHelper = -3011,
+    VSFPROPID_ShortCaption = -3012,
+    VSFPROPID_WindowHelpKeyword = -3013,
+    VSFPROPID_WindowHelpCmdText = -3014,
+    VSFPROPID_DocCookie = -4000,
+    VSFPROPID_OwnerCaption = -4001,
+    VSFPROPID_EditorCaption = -4002,
+    VSFPROPID_pszMkDocument = -4003,
+    VSFPROPID_DocData = -4004,
+    VSFPROPID_Hierarchy = -4005,
+    VSFPROPID_ItemID = -4006,
+    VSFPROPID_CmdUIGuid = -4007,
+    VSFPROPID_CreateDocWinFlags = -4008,
+    VSFPROPID_guidEditorType = -4009,
+    VSFPROPID_pszPhysicalView = -4010,
+    VSFPROPID_InheritKeyBindings = -4011,
+    VSFPROPID_RDTDocData = -4012,
+    VSFPROPID_AltDocData = -4013,
+    VSFPROPID_GuidPersistenceSlot = -5000,
+    VSFPROPID_GuidAutoActivate = -5001,
+    VSFPROPID_CreateToolWinFlags = -5002,
+    VSFPROPID_ExtWindowObject = -5003,
+    VSFPROPID_MultiInstanceToolNum = -5004,
+    VSFPROPID_BitmapResource = -5006,
+    VSFPROPID_BitmapIndex = -5007,
+    VSFPROPID_ToolbarHost = -5008,
+    VSFPROPID_HideToolwinContainer = -5009,
+    VSFPROPID_FIRST = -5009
+  };
+
+  struct IVsWindowFrame {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsWindowFrame ==
+    virtual HRESULT __stdcall Show() = 0;
+    virtual HRESULT __stdcall Hide() = 0;
+    virtual HRESULT __stdcall IsVisible() = 0;
+    virtual HRESULT __stdcall ShowNoActivate() = 0;
+    virtual HRESULT __stdcall CloseFrame(FRAMECLOSE grfSaveOptions) = 0;
+    virtual HRESULT __stdcall SetFramePos(VSSETFRAMEPOS dwSFP, const GUID &rguidRelativeTo, int x, int y, int cx, int cy) = 0;
+    virtual HRESULT __stdcall GetFramePos(VSSETFRAMEPOS *pdwSFP, GUID *pguidRelativeTo, int *px, int *py, int *pcx, int *pcy) = 0;
+    virtual HRESULT __stdcall GetProperty(VSFPROPID propid, VARIANT *pvar) = 0;
+    virtual HRESULT __stdcall SetProperty(VSFPROPID propid, VARIANT var) = 0;
+    virtual HRESULT __stdcall GetGuidProperty(VSFPROPID propid, GUID *pguid) = 0;
+    virtual HRESULT __stdcall SetGuidProperty(VSFPROPID propid, const GUID &rguid) = 0;
+    virtual HRESULT __stdcall QueryViewInterface(const IID &riid, void **ppv) = 0;
+    virtual HRESULT __stdcall IsOnScreen(BOOL *pfOnScreen) = 0;
+  };
+#pragma endregion
+
+  // ================================ IVsProject ================================
+#pragma region
+  const GUID IID_IVsProject = { 0xCD4028ED, 0xC4D8, 0x44ba, { 0x89, 0x0f, 0xef, 0xfb, 0x02, 0xa3, 0x80, 0xc6 } };
+
+  enum VSDOCUMENTPRIORITY {
+    DP_Intrinsic = 60,
+    DP_Standard = 50,
+    DP_NonMember = 40,
+    DP_CanAddAsNonMember = 30,
+    DP_External = 20,
+    DP_CanAddAsExternal = 10,
+    DP_Unsupported = 0
+  };
+
+  enum VSADDITEMOPERATION {
+    VSADDITEMOP_OPENFILE = 1,
+    VSADDITEMOP_CLONEFILE = 2,
+    VSADDITEMOP_RUNWIZARD = 3,
+    VSADDITEMOP_LINKTOFILE = 4
+  };
+
+  enum VSADDRESULT {
+    ADDRESULT_Success = -1,
+    ADDRESULT_Failure = 0,
+    ADDRESULT_Cancel = 1
+  };
+
+  struct __declspec(novtable) IVsProject {
+    // == IUnknown ==
+    virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
+    virtual ULONG __stdcall AddRef() = 0;
+    virtual ULONG __stdcall Release() = 0;
+
+    // == IVsProject ==
+    virtual HRESULT __stdcall IsDocumentInProject(LPCOLESTR pszMkDocument, BOOL * pfFound, VSDOCUMENTPRIORITY * pdwPriority, DWORD *pitemid) = 0;
+    virtual HRESULT __stdcall GetMkDocument(DWORD itemid, BSTR *pbstrMkDocument) = 0;
+    virtual HRESULT __stdcall OpenItem(DWORD itemid, const GUID &rguidLogicalView, IUnknown *punkDocDataExisting, IVsWindowFrame **ppWindowFrame) = 0;
+    virtual HRESULT __stdcall GetItemContext(DWORD itemid, IServiceProvider **ppSP) = 0;
+    virtual HRESULT __stdcall GenerateUniqueItemName(DWORD itemidLoc, LPCOLESTR pszExt, LPCOLESTR pszSuggestedRoot, BSTR *pbstrItemName) = 0;
+    virtual HRESULT __stdcall AddItem(DWORD itemidLoc, VSADDITEMOPERATION dwAddItemOperation, LPCOLESTR pszItemName, ULONG cFilesToOpen, LPCOLESTR rgpszFilesToOpen[], HWND hwndDlgOwner, VSADDRESULT *pResult) = 0;
+  };
 #pragma endregion
 
   // ================================ IVsTrackProjectDocumentsEvents2 ================================
@@ -880,13 +2549,13 @@ namespace vsix {
     // pdwCookie: Pointer to the event cookie.
     virtual HRESULT __stdcall AdviseTrackProjectDocumentsEvents(
       IVsTrackProjectDocumentsEvents2 *pEventSink,
-      VSCOOKIE *pdwCookie
+      DWORD *pdwCookie
     ) = 0;
 
     // Unadvises the client of changes to project documents.
     // dwCookie: The event cookie to unadvise.
     virtual HRESULT __stdcall UnadviseTrackProjectDocumentsEvents(
-      VSCOOKIE dwCookie
+      DWORD dwCookie
     ) = 0;
 
     // Determines whether directories can be added to the project.
@@ -1210,7 +2879,7 @@ struct __declspec(novtable) IVsTrackProjectDocuments3 {
     // iStartIndex: [in] If fEnable is true, the index in the current line which marks the start of the portion to be used for statement completion. Otherwise ignored.
     // iEndIndex: [in] If fEnable is true, the index in the current line which marks the end of the portion to be used for statement completion. If value is -1, it indicates that the rest of the line is to be used. Ignored on disable of statement completion.
     // pTextView: [in] The text view.
-    virtual HRESULT __stdcall EnableStatementCompletion(BOOL fEnable, CharIndex iStartIndex, CharIndex iEndIndex, IVsTextView *pTextView) = 0;
+    virtual HRESULT __stdcall EnableStatementCompletion(BOOL fEnable, long iStartIndex, long iEndIndex, IVsTextView *pTextView) = 0;
 
     // Sets the current context for statement completion for the Command Window.
     // The Command Window calls this method to forward the information that the debugger passes via IVsCommandWindowCompletion::SetCompletionContext.
@@ -1265,21 +2934,21 @@ struct __declspec(novtable) IVsTrackProjectDocuments3 {
     // Returns a value indicating whether the UI context subsystem is available. This is generally true except in UI-less scenarios.
     virtual HRESULT __stdcall get_AreUIContextsAvailable(VARIANT_BOOL *pfAvailable) = 0;
 
-    virtual HRESULT __stdcall GetUIContextState(REFGUID uiContext, UIContextState *pState) = 0;
+    virtual HRESULT __stdcall GetUIContextState(const GUID &uiContext, UIContextState *pState) = 0;
 
-    virtual HRESULT __stdcall SetUIContextState(REFGUID uiContext, VARIANT_BOOL isActive) = 0;
+    virtual HRESULT __stdcall SetUIContextState(const GUID &uiContext, VARIANT_BOOL isActive) = 0;
 
     // Advises for change events for all UI contexts.
     // Safe to access from any thread, though do be aware that if this method is called off the UI thread while a 
     // context is actively being set on the UI thread, the registered callback may miss the change notification.
     // callback: The callback to invoke when a UI context value changes.
     // pCookie: A cookie representing your subscription.
-    virtual HRESULT __stdcall AdviseUIContextEvents(IVsUIContextEvents *callback, VSCOOKIE *pCookie) = 0;
+    virtual HRESULT __stdcall AdviseUIContextEvents(IVsUIContextEvents *callback, DWORD *pCookie) = 0;
 
-    virtual HRESULT __stdcall AdviseSpecificUIContextEvents(IVsUIContextEvents *callback, REFGUID uiContext, VSCOOKIE *pCookie) = 0;
+    virtual HRESULT __stdcall AdviseSpecificUIContextEvents(IVsUIContextEvents *callback, const GUID &uiContext, DWORD *pCookie) = 0;
 
     // Safe to access from any thread.
-    virtual HRESULT __stdcall UnadviseUIContextEvents(VSCOOKIE cookie) = 0;
+    virtual HRESULT __stdcall UnadviseUIContextEvents(DWORD cookie) = 0;
   };
 #pragma endregion
 
@@ -1647,6 +3316,16 @@ struct __declspec(novtable) IVsTrackProjectDocuments3 {
   const GUID IID_IVsSolutionBuildManager = { 0x93e969d6, 0x1aa0, 0x455f, { 0xb2, 0x08, 0x6e, 0xd3, 0xc8, 0x2b, 0x5c, 0x58 } };
   // Pass    IID_IVsSolutionBuildManager for service IID
 
+  enum VSDBGLAUNCHFLAGS {
+    DBGLAUNCH_Silent = 0x1,
+    DBGLAUNCH_LocalDeploy = 0x2,
+    DBGLAUNCH_NoDebug = 0x4,
+    DBGLAUNCH_DetachOnStop = 0x8,
+    DBGLAUNCH_Selected = 0x10,
+    DBGLAUNCH_StopDebuggingOnEnd = 0x20,
+    DBGLAUNCH_WaitForAttachComplete = 0x40
+  };
+
   struct __declspec(novtable) IVsSolutionBuildManager {
     // == IUnknown ==
     virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
@@ -1795,6 +3474,97 @@ struct __declspec(novtable) IVsTrackProjectDocuments3 {
   // ================================ IVsSolution ================================
 #pragma region
   const GUID IID_IVsSolution = { 0x7f7cd0db, 0x91ef, 0x49dc, { 0x9f, 0xa9, 0x02, 0xd1, 0x28, 0x51, 0x5d, 0xd4 } };
+
+  enum VSENUMPROJFLAGS {
+    EPF_LOADEDINSOLUTION = 0x1,
+    EPF_UNLOADEDINSOLUTION = 0x2,
+    EPF_ALLINSOLUTION = (EPF_LOADEDINSOLUTION | EPF_UNLOADEDINSOLUTION),
+    EPF_MATCHTYPE = 0x4,
+    EPF_VIRTUALVISIBLEPROJECT = 0x8,
+    EPF_VIRTUALNONVISIBLEPROJECT = 0x10,
+    EPF_ALLVIRTUAL = (EPF_VIRTUALVISIBLEPROJECT | EPF_VIRTUALNONVISIBLEPROJECT),
+    EPF_ALLPROJECTS = (EPF_ALLINSOLUTION | EPF_ALLVIRTUAL)
+  };
+
+  enum VSSLNSAVEOPTIONS {
+    SLNSAVEOPT_SaveIfDirty = 0,
+    SLNSAVEOPT_PromptSave = 0x1,
+    SLNSAVEOPT_SkipDocs = 0x2,
+    SLNSAVEOPT_SkipProj = 0x4,
+    SLNSAVEOPT_SkipSolution = 0x8,
+    SLNSAVEOPT_SkipUserOptFile = 0x10,
+    SLNSAVEOPT_NoSave = 0x1e,
+    SLNSAVEOPT_ForceSave = 0x20,
+    SLNSAVEOPT_DocClose = 0x40
+  };
+
+  enum VSSLNCLOSEOPTIONS {
+    SLNCLOSEOPT_SLNSAVEOPT_MASK = 0xffff,
+    SLNCLOSEOPT_UnloadProject = 0x10000,
+    SLNCLOSEOPT_DeleteProject = 0x20000
+  };
+
+  enum VSUPDATEPROJREFREASON {
+    UPR_NoUpdate = 0,
+    UPR_ProjectRenamed = 1,
+    UPR_ProjectUsedInNewSolution = 2,
+    UPR_ItemRenamed = 3,
+    UPR_SolutionLocationChanged = 4
+  };
+
+  enum VSADDVPFLAGS {
+    ADDVP_AddToProjectWindow = 0x1,
+    ADDVP_ExcludeFromBuild = 0x2,
+    ADDVP_ExcludeFromDebugLaunch = 0x4,
+    ADDVP_ExcludeFromDeploy = 0x8,
+    ADDVP_ExcludeFromSCC = 0x10,
+    ADDVP_ExcludeFromEnumOutputs = 0x20,
+    ADDVP_ExcludeFromCfgUI = 0x40
+  };
+
+  enum VSPROPID {
+    VSPROPID_LAST = -8000,
+    VSPROPID_SolutionDirectory = -8000,
+    VSPROPID_SolutionFileName = -8001,
+    VSPROPID_UserOptionsFileName = -8002,
+    VSPROPID_SolutionBaseName = -8003,
+    VSPROPID_IsSolutionDirty = -8004,
+    VSPROPID_IsSolutionOpen = -8005,
+    VSPROPID_ProjectCount = -8006,
+    VSPROPID_RegisteredProjExtns = -8007,
+    VSPROPID_OpenProjectFilter = -8008,
+    VSPROPID_FileDefaultCodePage = -8009,
+    VSPROPID_SolutionFileNameBeingLoaded = -8010,
+    VSPROPID_SolutionNodeCaption = -8011,
+    VSPROPID_IsSolutionOpening = -8013,
+    VSPROPID_IsSolutionSaveAsRequired = -8014,
+    VSPROPID_CountOfProjectsBeingLoaded = -8015,
+    VSPROPID_SolutionPropertyPages = -8016,
+    VSPROPID_FIRST = -8016
+  };
+
+  enum VSSLNOPENOPTIONS {
+    SLNOPENOPT_Silent = 0x1,
+    SLNOPENOPT_AddToCurrent = 0x2,
+    SLNOPENOPT_DontConvertSLN = 0x4
+  };
+
+  enum VSCREATESOLUTIONFLAGS {
+    CSF_SILENT = 0x1,
+    CSF_OVERWRITE = 0x2,
+    CSF_TEMPORARY = 0x4,
+    CSF_DELAYNOTIFY = 0x8
+  };
+
+  enum VSREMOVEVPFLAGS {
+    REMOVEVP_DontCloseHierarchy = 0x1,
+    REMOVEVP_DontSaveHierarchy = 0x2
+  };
+
+  enum VSGETPROJFILESFLAGS {
+    GPFF_SKIPUNLOADEDPROJECTS = 0x1
+  };
+
   struct __declspec(novtable) IVsSolution {
     // == IUnknown ==
     virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
@@ -1896,6 +3666,19 @@ struct __declspec(novtable) IVsTrackProjectDocuments3 {
   // ================================ IVsSolution3 ================================
 #pragma region
   const GUID IID_IVsSolution3 = { 0x58dcf7bf, 0xf14e, 0x43ec, { 0xa7, 0xb2, 0x9f, 0x78, 0xed, 0xd0, 0x64, 0x18 } };
+
+  enum VSCREATENEWPROJVIADLGEXFLAGS {
+    VNPVDE_ALWAYSNEWSOLUTION = 0x1,
+    VNPVDE_OVERRIDEBROWSEBUTTON = 0x2,
+    VNPVDE_ALWAYSADDTOSOLUTION = 0x4,
+    VNPVDE_ADDNESTEDTOSELECTION = 0x8,
+    VNPVDE_USENEWWEBSITEDLG = 0x10
+  };
+
+  enum VSSAVEDEFERREDSAVEFLAGS {
+    VSDSF_HIDEADDTOSOURCECONTROL = 0x1
+  };
+
   struct __declspec(novtable) IVsSolution3 {
     // == IUnknown ==
     virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
@@ -1913,6 +3696,24 @@ struct __declspec(novtable) IVsTrackProjectDocuments3 {
   // ================================ IVsSolution4 ================================
 #pragma region
   const GUID IID_IVsSolution4 = { 0xd2fb5b25, 0xeaf0, 0x4be9, { 0x8e, 0x9b, 0xf2, 0xc6, 0x62, 0xab, 0x98, 0x26 } };
+
+  enum VSBSLFLAGS {
+    VSBSLFLAGS_None = 0,
+    VSBSLFLAGS_NotCancelable = 0x1,
+    VSBSLFLAGS_LoadBuildDependencies = 0x2,
+    VSBSLFLAGS_ExpandProjectOnLoad = 0x4,
+    VSBSLFLAGS_SelectProjectOnLoad = 0x8,
+    VSBSLFLAGS_LoadAllPendingProjects = 0x10
+  };
+
+  enum VSProjectUnloadStatus {
+    UNLOADSTATUS_UnloadedByUser = 0,
+    UNLOADSTATUS_LoadPendingIfNeeded = 1,
+    UNLOADSTATUS_StorageNotLoadable = 2,
+    UNLOADSTATUS_StorageNotAvailable = 3,
+    UNLOADSTATUS_UpgradeFailed = 4
+  };
+
   struct __declspec(novtable) IVsSolution4 {
     // == IUnknown ==
     virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
@@ -1982,6 +3783,14 @@ struct __declspec(novtable) IVsTrackProjectDocuments3 {
   // ================================ IVsSolution8 ================================
 #pragma region
   const GUID IID_IVsSolution8 = { 0x51a3a58a, 0xe65e, 0x46f8, { 0xa6, 0x3c, 0x49, 0x66, 0x5a, 0x67, 0x50, 0x16 } };
+
+  enum VSBatchProjectActionFlags {
+    BPAF_CLOSE_FILES = 0x1,
+    BPAF_PROMPT_SAVE = 0x2,
+    BPAF_ALLOW_RELOAD_SOLUTION = 0x4,
+    BPAF_IGNORE_SELFRELOAD_PROJECTS = 0x8
+  };
+
   struct __declspec(novtable) IVsSolution8 {
     // == IUnknown ==
     virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
@@ -1999,6 +3808,126 @@ struct __declspec(novtable) IVsTrackProjectDocuments3 {
   // ================================ IVsUIShell ================================
 #pragma region
   const GUID IID_IVsUIShell = { 0xb61fc35b, 0xeebf, 0x4dec, { 0xbf, 0xf1, 0x28, 0xa2, 0xdd, 0x43, 0xc3, 0x8f } };
+
+  enum VSFINDTOOLWIN {
+    FTW_fForceCreate = 0x80000,
+    FTW_fFindFirst = 0x800000,
+    FTW_fFrameOnly = 0x1000000
+  };
+
+  enum VSCREATETOOLWIN {
+    CTW_RESERVED_MASK = 0xffff,
+    CTW_fInitNew = 0x10000,
+    CTW_fActivateWithProject = 0x20000,
+    CTW_fActivateWithDocument = 0x40000,
+    CTW_fForceCreate = 0x80000,
+    CTW_fHasBorder = 0x100000,
+    CTW_fMultiInstance = 0x200000,
+    CTW_fToolbarHost = 0x400000
+  };
+
+  enum OLEMSGBUTTON {
+    OLEMSGBUTTON_OK = 0,
+    OLEMSGBUTTON_OKCANCEL = 1,
+    OLEMSGBUTTON_ABORTRETRYIGNORE = 2,
+    OLEMSGBUTTON_YESNOCANCEL = 3,
+    OLEMSGBUTTON_YESNO = 4,
+    OLEMSGBUTTON_RETRYCANCEL = 5,
+    OLEMSGBUTTON_YESALLNOCANCEL = 6
+  };
+
+  enum OLEMSGDEFBUTTON {
+    OLEMSGDEFBUTTON_FIRST = 0,
+    OLEMSGDEFBUTTON_SECOND = 1,
+    OLEMSGDEFBUTTON_THIRD = 2,
+    OLEMSGDEFBUTTON_FOURTH = 3
+  };
+
+  enum OLEMSGICON {
+    OLEMSGICON_NOICON = 0,
+    OLEMSGICON_CRITICAL = 1,
+    OLEMSGICON_QUERY = 2,
+    OLEMSGICON_WARNING = 3,
+    OLEMSGICON_INFO = 4
+  };
+
+  enum VSCREATEDOCWIN {
+    CDW_RDTFLAGS_MASK = 0xfffff,
+    CDW_fDockable = 0x100000,
+    CDW_fAltDocData = 0x200000,
+    CDW_fCreateNewWindow = 0x400000
+  };
+
+  enum VSSAVEFLAGS {
+    VSSAVE_Save = 0,
+    VSSAVE_SaveAs = 1,
+    VSSAVE_SilentSave = 2,
+    VSSAVE_SaveCopyAs = 3
+  };
+
+  enum VSSYSCOLOR {
+    VSCOLOR_LIGHT = -1,
+    VSCOLOR_MEDIUM = -2,
+    VSCOLOR_DARK = -3,
+    VSCOLOR_LIGHTCAPTION = -4,
+    VSCOLOR_LAST = -4
+  };
+
+  enum DBGMODE {
+    DBGMODE_Design = 0,
+    DBGMODE_Break = 0x1,
+    DBGMODE_Run = 0x2,
+    DBGMODE_Enc = 0x10000000,
+    DBGMODE_EncMask = 0xf0000000
+  };
+
+  struct VSOPENFILENAMEW {
+    DWORD lStructSize;
+    HWND hwndOwner;
+    LPCWSTR pwzDlgTitle;
+    LPWSTR pwzFileName;
+    DWORD nMaxFileName;
+    LPCWSTR pwzInitialDir;
+    LPCWSTR pwzFilter;
+    DWORD nFilterIndex;
+    DWORD nFileOffset;
+    DWORD nFileExtension;
+    DWORD dwHelpTopic;
+    DWORD dwFlags;
+  };
+
+  struct VSSAVEFILENAMEW {
+    DWORD lStructSize;
+    HWND hwndOwner;
+    LPCWSTR pwzDlgTitle;
+    LPWSTR pwzFileName;
+    DWORD nMaxFileName;
+    LPCWSTR pwzInitialDir;
+    LPCWSTR pwzFilter;
+    DWORD nFilterIndex;
+    DWORD nFileOffset;
+    DWORD nFileExtension;
+    DWORD dwHelpTopic;
+    DWORD dwFlags;
+    IVsSaveOptionsDlg *pSaveOpts;
+  };
+
+  struct VSBROWSEINFOW {
+    DWORD lStructSize;
+    HWND hwndOwner;
+    LPCWSTR pwzDlgTitle;
+    LPWSTR pwzDirName;
+    DWORD nMaxDirName;
+    LPCWSTR pwzInitialDir;
+    DWORD dwHelpTopic;
+    DWORD dwFlags;
+  };
+
+  enum RemoveBFDirection {
+    RemovePrev = 0,
+    RemoveNext = (RemovePrev + 1)
+  };
+
   struct __declspec(novtable) IVsUIShell {
     // == IUnknown ==
     virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
@@ -2009,7 +3938,7 @@ struct __declspec(novtable) IVsTrackProjectDocuments3 {
     virtual HRESULT __stdcall GetToolWindowEnum(IEnumWindowFrames **ppEnum) = 0;
     virtual HRESULT __stdcall GetDocumentWindowEnum(IEnumWindowFrames **ppEnum) = 0;
     virtual HRESULT __stdcall FindToolWindow(VSFINDTOOLWIN grfFTW, const GUID &rguidPersistenceSlot, IVsWindowFrame **ppWindowFrame) = 0;
-    virtual HRESULT __stdcall CreateToolWindow(VSCREATETOOLWIN grfCTW, DWORD dwToolWindowId, IUnknown *punkTool, REFCLSID rclsidTool, const GUID &rguidPersistenceSlot, const GUID &rguidAutoActivate, IServiceProvider *pSP, const wchar_t *pszCaption, BOOL *pfDefaultPosition, IVsWindowFrame **ppWindowFrame) = 0;
+    virtual HRESULT __stdcall CreateToolWindow(VSCREATETOOLWIN grfCTW, DWORD dwToolWindowId, IUnknown *punkTool, const IID &rclsidTool, const GUID &rguidPersistenceSlot, const GUID &rguidAutoActivate, IServiceProvider *pSP, const wchar_t *pszCaption, BOOL *pfDefaultPosition, IVsWindowFrame **ppWindowFrame) = 0;
     virtual HRESULT __stdcall CreateDocumentWindow(VSCREATEDOCWIN grfCDW, const wchar_t *pszMkDocument, IVsUIHierarchy *pUIH, DWORD itemid, IUnknown *punkDocView, IUnknown *punkDocData, const GUID &rguidEditorType, const wchar_t *pszPhysicalView, const GUID &rguidCmdUI, IServiceProvider *pSP, const wchar_t *pszOwnerCaption, const wchar_t *pszEditorCaption, BOOL *pfDefaultPosition, IVsWindowFrame **ppWindowFrame) = 0;
     virtual HRESULT __stdcall SetErrorInfo(HRESULT hr, const wchar_t *pszDescription, DWORD dwReserved, const wchar_t *pszHelpKeyword, const wchar_t *pszSource) = 0;
     virtual HRESULT __stdcall ReportErrorInfo(HRESULT hr) = 0;
@@ -2024,8 +3953,8 @@ struct __declspec(novtable) IVsTrackProjectDocuments3 {
     virtual HRESULT __stdcall RefreshPropertyBrowser(DISPID dispid) = 0;
     virtual HRESULT __stdcall SetWaitCursor() = 0;
     virtual HRESULT __stdcall PostExecCommand(const GUID *pguidCmdGroup, DWORD nCmdID, DWORD nCmdexecopt, VARIANT *pvaIn) = 0;
-    virtual HRESULT __stdcall ShowContextMenu(DWORD dwCompRole, REFCLSID rclsidActive, LONG nMenuId, REFPOINTS pos, IOleCommandTarget *pCmdTrgtActive) = 0;
-    virtual HRESULT __stdcall ShowMessageBox(DWORD dwCompRole, REFCLSID rclsidComp, LPOLESTR pszTitle, LPOLESTR pszText, LPOLESTR pszHelpFile, DWORD dwHelpContextID, OLEMSGBUTTON msgbtn, OLEMSGDEFBUTTON msgdefbtn, OLEMSGICON msgicon, BOOL fSysAlert, LONG *pnResult) = 0;
+    virtual HRESULT __stdcall ShowContextMenu(DWORD dwCompRole, const IID &rclsidActive, LONG nMenuId, POINTS *pos, IOleCommandTarget *pCmdTrgtActive) = 0;
+    virtual HRESULT __stdcall ShowMessageBox(DWORD dwCompRole, const IID &rclsidComp, LPOLESTR pszTitle, LPOLESTR pszText, LPOLESTR pszHelpFile, DWORD dwHelpContextID, OLEMSGBUTTON msgbtn, OLEMSGDEFBUTTON msgdefbtn, OLEMSGICON msgicon, BOOL fSysAlert, LONG *pnResult) = 0;
     virtual HRESULT __stdcall SetMRUComboText(const GUID *pguidCmdGroup, DWORD dwCmdId, LPSTR lpszText, BOOL fAddToList) = 0;
     virtual HRESULT __stdcall SetToolbarVisibleInFullScreen(const GUID *pguidCmdGroup, DWORD dwToolbarId, BOOL fVisibleInFullScreen) = 0;
     virtual HRESULT __stdcall FindToolWindowEx(VSFINDTOOLWIN grfFTW, const GUID &rguidPersistenceSlot, DWORD dwToolWinId, IVsWindowFrame **ppWindowFrame) = 0;
@@ -2052,6 +3981,260 @@ struct __declspec(novtable) IVsTrackProjectDocuments3 {
   // ================================ IVsUIShell2 ================================
 #pragma region
   const GUID IID_IVsUIShell2 = { 0x4e6b6ef9, 0x8e3d, 0x4756, { 0x99, 0xe9, 0x11, 0x92, 0xba, 0xad, 0x54, 0x96 } };
+
+  struct VSNSEBROWSEINFOW {
+    DWORD lStructSize;
+    LPCOLESTR pszNamespaceGUID;
+    LPCOLESTR pszTrayDisplayName;
+    LPCOLESTR pszProtocolPrefix;
+    BOOL fOnlyShowNSEInTray;
+  };
+
+  struct VSSAVETREEITEM {
+    VSRDTSAVEOPTIONS grfSave;
+    DWORD docCookie;
+    IVsHierarchy *pHier;
+    DWORD itemid;
+  };
+
+  enum VSSYSCOLOREX {
+    VSCOLOR_ACCENT_BORDER = -5,
+    VSCOLOR_ACCENT_DARK = -6,
+    VSCOLOR_ACCENT_LIGHT = -7,
+    VSCOLOR_ACCENT_MEDIUM = -8,
+    VSCOLOR_ACCENT_PALE = -9,
+    VSCOLOR_COMMANDBAR_BORDER = -10,
+    VSCOLOR_COMMANDBAR_DRAGHANDLE = -11,
+    VSCOLOR_COMMANDBAR_DRAGHANDLE_SHADOW = -12,
+    VSCOLOR_COMMANDBAR_GRADIENT_BEGIN = -13,
+    VSCOLOR_COMMANDBAR_GRADIENT_END = -14,
+    VSCOLOR_COMMANDBAR_GRADIENT_MIDDLE = -15,
+    VSCOLOR_COMMANDBAR_HOVER = -16,
+    VSCOLOR_COMMANDBAR_HOVEROVERSELECTED = -17,
+    VSCOLOR_COMMANDBAR_HOVEROVERSELECTEDICON = -18,
+    VSCOLOR_COMMANDBAR_HOVEROVERSELECTEDICON_BORDER = -19,
+    VSCOLOR_COMMANDBAR_SELECTED = -20,
+    VSCOLOR_COMMANDBAR_SHADOW = -21,
+    VSCOLOR_COMMANDBAR_TEXT_ACTIVE = -22,
+    VSCOLOR_COMMANDBAR_TEXT_HOVER = -23,
+    VSCOLOR_COMMANDBAR_TEXT_INACTIVE = -24,
+    VSCOLOR_COMMANDBAR_TEXT_SELECTED = -25,
+    VSCOLOR_CONTROL_EDIT_HINTTEXT = -26,
+    VSCOLOR_CONTROL_EDIT_REQUIRED_BACKGROUND = -27,
+    VSCOLOR_CONTROL_EDIT_REQUIRED_HINTTEXT = -28,
+    VSCOLOR_CONTROL_LINK_TEXT = -29,
+    VSCOLOR_CONTROL_LINK_TEXT_HOVER = -30,
+    VSCOLOR_CONTROL_LINK_TEXT_PRESSED = -31,
+    VSCOLOR_CONTROL_OUTLINE = -32,
+    VSCOLOR_DEBUGGER_DATATIP_ACTIVE_BACKGROUND = -33,
+    VSCOLOR_DEBUGGER_DATATIP_ACTIVE_BORDER = -34,
+    VSCOLOR_DEBUGGER_DATATIP_ACTIVE_HIGHLIGHT = -35,
+    VSCOLOR_DEBUGGER_DATATIP_ACTIVE_HIGHLIGHTTEXT = -36,
+    VSCOLOR_DEBUGGER_DATATIP_ACTIVE_SEPARATOR = -37,
+    VSCOLOR_DEBUGGER_DATATIP_ACTIVE_TEXT = -38,
+    VSCOLOR_DEBUGGER_DATATIP_INACTIVE_BACKGROUND = -39,
+    VSCOLOR_DEBUGGER_DATATIP_INACTIVE_BORDER = -40,
+    VSCOLOR_DEBUGGER_DATATIP_INACTIVE_HIGHLIGHT = -41,
+    VSCOLOR_DEBUGGER_DATATIP_INACTIVE_HIGHLIGHTTEXT = -42,
+    VSCOLOR_DEBUGGER_DATATIP_INACTIVE_SEPARATOR = -43,
+    VSCOLOR_DEBUGGER_DATATIP_INACTIVE_TEXT = -44,
+    VSCOLOR_DESIGNER_BACKGROUND = -45,
+    VSCOLOR_DESIGNER_SELECTIONDOTS = -46,
+    VSCOLOR_DESIGNER_TRAY = -47,
+    VSCOLOR_DESIGNER_WATERMARK = -48,
+    VSCOLOR_EDITOR_EXPANSION_BORDER = -49,
+    VSCOLOR_EDITOR_EXPANSION_FILL = -50,
+    VSCOLOR_EDITOR_EXPANSION_LINK = -51,
+    VSCOLOR_EDITOR_EXPANSION_TEXT = -52,
+    VSCOLOR_ENVIRONMENT_BACKGROUND = -53,
+    VSCOLOR_ENVIRONMENT_BACKGROUND_GRADIENTBEGIN = -54,
+    VSCOLOR_ENVIRONMENT_BACKGROUND_GRADIENTEND = -55,
+    VSCOLOR_FILETAB_BORDER = -56,
+    VSCOLOR_FILETAB_CHANNELBACKGROUND = -57,
+    VSCOLOR_FILETAB_GRADIENTDARK = -58,
+    VSCOLOR_FILETAB_GRADIENTLIGHT = -59,
+    VSCOLOR_FILETAB_SELECTEDBACKGROUND = -60,
+    VSCOLOR_FILETAB_SELECTEDBORDER = -61,
+    VSCOLOR_FILETAB_SELECTEDTEXT = -62,
+    VSCOLOR_FILETAB_TEXT = -63,
+    VSCOLOR_FORMSMARTTAG_ACTIONTAG_BORDER = -64,
+    VSCOLOR_FORMSMARTTAG_ACTIONTAG_FILL = -65,
+    VSCOLOR_FORMSMARTTAG_OBJECTTAG_BORDER = -66,
+    VSCOLOR_FORMSMARTTAG_OBJECTTAG_FILL = -67,
+    VSCOLOR_GRID_HEADING_BACKGROUND = -68,
+    VSCOLOR_GRID_HEADING_TEXT = -69,
+    VSCOLOR_GRID_LINE = -70,
+    VSCOLOR_HELP_HOWDOI_PANE_BACKGROUND = -71,
+    VSCOLOR_HELP_HOWDOI_PANE_LINK = -72,
+    VSCOLOR_HELP_HOWDOI_PANE_TEXT = -73,
+    VSCOLOR_HELP_HOWDOI_TASK_BACKGROUND = -74,
+    VSCOLOR_HELP_HOWDOI_TASK_LINK = -75,
+    VSCOLOR_HELP_HOWDOI_TASK_TEXT = -76,
+    VSCOLOR_HELP_SEARCH_FRAME_BACKGROUND = -77,
+    VSCOLOR_HELP_SEARCH_FRAME_TEXT = -78,
+    VSCOLOR_HELP_SEARCH_BORDER = -79,
+    VSCOLOR_HELP_SEARCH_FITLER_TEXT = -80,
+    VSCOLOR_HELP_SEARCH_FITLER_BACKGROUND = -81,
+    VSCOLOR_HELP_SEARCH_FITLER_BORDER = -82,
+    VSCOLOR_HELP_SEARCH_PROVIDER_UNSELECTED_BACKGROUND = -83,
+    VSCOLOR_HELP_SEARCH_PROVIDER_UNSELECTED_TEXT = -84,
+    VSCOLOR_HELP_SEARCH_PROVIDER_SELECTED_BACKGROUND = -85,
+    VSCOLOR_HELP_SEARCH_PROVIDER_SELECTED_TEXT = -86,
+    VSCOLOR_HELP_SEARCH_PROVIDER_ICON = -87,
+    VSCOLOR_HELP_SEARCH_RESULT_LINK_SELECTED = -88,
+    VSCOLOR_HELP_SEARCH_RESULT_LINK_UNSELECTED = -89,
+    VSCOLOR_HELP_SEARCH_RESULT_SELECTED_BACKGROUND = -90,
+    VSCOLOR_HELP_SEARCH_RESULT_SELECTED_TEXT = -91,
+    VSCOLOR_HELP_SEARCH_BACKGROUND = -92,
+    VSCOLOR_HELP_SEARCH_TEXT = -93,
+    VSCOLOR_HELP_SEARCH_PANEL_RULES = -94,
+    VSCOLOR_MDICLIENT_BORDER = -95,
+    VSCOLOR_PANEL_BORDER = -96,
+    VSCOLOR_PANEL_GRADIENTDARK = -97,
+    VSCOLOR_PANEL_GRADIENTLIGHT = -98,
+    VSCOLOR_PANEL_HOVEROVERCLOSE_BORDER = -99,
+    VSCOLOR_PANEL_HOVEROVERCLOSE_FILL = -100,
+    VSCOLOR_PANEL_HYPERLINK = -101,
+    VSCOLOR_PANEL_HYPERLINK_HOVER = -102,
+    VSCOLOR_PANEL_HYPERLINK_PRESSED = -103,
+    VSCOLOR_PANEL_SEPARATOR = -104,
+    VSCOLOR_PANEL_SUBGROUPSEPARATOR = -105,
+    VSCOLOR_PANEL_TEXT = -106,
+    VSCOLOR_PANEL_TITLEBAR = -107,
+    VSCOLOR_PANEL_TITLEBAR_TEXT = -108,
+    VSCOLOR_PANEL_TITLEBAR_UNSELECTED = -109,
+    VSCOLOR_PROJECTDESIGNER_BACKGROUND_GRADIENTBEGIN = -110,
+    VSCOLOR_PROJECTDESIGNER_BACKGROUND_GRADIENTEND = -111,
+    VSCOLOR_PROJECTDESIGNER_BORDER_OUTSIDE = -112,
+    VSCOLOR_PROJECTDESIGNER_BORDER_INSIDE = -113,
+    VSCOLOR_PROJECTDESIGNER_CONTENTS_BACKGROUND = -114,
+    VSCOLOR_PROJECTDESIGNER_TAB_BACKGROUND_GRADIENTBEGIN = -115,
+    VSCOLOR_PROJECTDESIGNER_TAB_BACKGROUND_GRADIENTEND = -116,
+    VSCOLOR_PROJECTDESIGNER_TAB_SELECTED_INSIDEBORDER = -117,
+    VSCOLOR_PROJECTDESIGNER_TAB_SELECTED_BORDER = -118,
+    VSCOLOR_PROJECTDESIGNER_TAB_SELECTED_HIGHLIGHT1 = -119,
+    VSCOLOR_PROJECTDESIGNER_TAB_SELECTED_HIGHLIGHT2 = -120,
+    VSCOLOR_PROJECTDESIGNER_TAB_SELECTED_BACKGROUND = -121,
+    VSCOLOR_PROJECTDESIGNER_TAB_SEP_BOTTOM_GRADIENTBEGIN = -122,
+    VSCOLOR_PROJECTDESIGNER_TAB_SEP_BOTTOM_GRADIENTEND = -123,
+    VSCOLOR_PROJECTDESIGNER_TAB_SEP_TOP_GRADIENTBEGIN = -124,
+    VSCOLOR_PROJECTDESIGNER_TAB_SEP_TOP_GRADIENTEND = -125,
+    VSCOLOR_SCREENTIP_BORDER = -126,
+    VSCOLOR_SCREENTIP_BACKGROUND = -127,
+    VSCOLOR_SCREENTIP_TEXT = -128,
+    VSCOLOR_SIDEBAR_BACKGROUND = -129,
+    VSCOLOR_SIDEBAR_GRADIENTDARK = -130,
+    VSCOLOR_SIDEBAR_GRADIENTLIGHT = -131,
+    VSCOLOR_SIDEBAR_TEXT = -132,
+    VSCOLOR_SMARTTAG_BORDER = -133,
+    VSCOLOR_SMARTTAG_FILL = -134,
+    VSCOLOR_SMARTTAG_HOVER_BORDER = -135,
+    VSCOLOR_SMARTTAG_HOVER_FILL = -136,
+    VSCOLOR_SMARTTAG_HOVER_TEXT = -137,
+    VSCOLOR_SMARTTAG_TEXT = -138,
+    VSCOLOR_SNAPLINES = -139,
+    VSCOLOR_SNAPLINES_PADDING = -140,
+    VSCOLOR_SNAPLINES_TEXTBASELINE = -141,
+    VSCOLOR_SORT_BACKGROUND = -142,
+    VSCOLOR_SORT_TEXT = -143,
+    VSCOLOR_TASKLIST_GRIDLINES = -144,
+    VSCOLOR_TITLEBAR_ACTIVE = -145,
+    VSCOLOR_TITLEBAR_ACTIVE_GRADIENTBEGIN = -146,
+    VSCOLOR_TITLEBAR_ACTIVE_GRADIENTEND = -147,
+    VSCOLOR_TITLEBAR_ACTIVE_TEXT = -148,
+    VSCOLOR_TITLEBAR_INACTIVE = -149,
+    VSCOLOR_TITLEBAR_INACTIVE_GRADIENTBEGIN = -150,
+    VSCOLOR_TITLEBAR_INACTIVE_GRADIENTEND = -151,
+    VSCOLOR_TITLEBAR_INACTIVE_TEXT = -152,
+    VSCOLOR_TOOLBOX_BACKGROUND = -153,
+    VSCOLOR_TOOLBOX_DIVIDER = -154,
+    VSCOLOR_TOOLBOX_GRADIENTDARK = -155,
+    VSCOLOR_TOOLBOX_GRADIENTLIGHT = -156,
+    VSCOLOR_TOOLBOX_HEADINGACCENT = -157,
+    VSCOLOR_TOOLBOX_HEADINGBEGIN = -158,
+    VSCOLOR_TOOLBOX_HEADINGEND = -159,
+    VSCOLOR_TOOLBOX_ICON_HIGHLIGHT = -160,
+    VSCOLOR_TOOLBOX_ICON_SHADOW = -161,
+    VSCOLOR_TOOLWINDOW_BACKGROUND = -162,
+    VSCOLOR_TOOLWINDOW_BORDER = -163,
+    VSCOLOR_TOOLWINDOW_BUTTON_DOWN = -164,
+    VSCOLOR_TOOLWINDOW_BUTTON_DOWN_BORDER = -165,
+    VSCOLOR_TOOLWINDOW_BUTTON_HOVER_ACTIVE = -166,
+    VSCOLOR_TOOLWINDOW_BUTTON_HOVER_ACTIVE_BORDER = -167,
+    VSCOLOR_TOOLWINDOW_BUTTON_HOVER_INACTIVE = -168,
+    VSCOLOR_TOOLWINDOW_BUTTON_HOVER_INACTIVE_BORDER = -169,
+    VSCOLOR_TOOLWINDOW_TEXT = -170,
+    VSCOLOR_TOOLWINDOW_TAB_SELECTEDTAB = -171,
+    VSCOLOR_TOOLWINDOW_TAB_BORDER = -172,
+    VSCOLOR_TOOLWINDOW_TAB_GRADIENTBEGIN = -173,
+    VSCOLOR_TOOLWINDOW_TAB_GRADIENTEND = -174,
+    VSCOLOR_TOOLWINDOW_TAB_TEXT = -175,
+    VSCOLOR_TOOLWINDOW_TAB_SELECTEDTEXT = -176,
+    VSCOLOR_WIZARD_ORIENTATIONPANEL_BACKGROUND = -177,
+    VSCOLOR_WIZARD_ORIENTATIONPANEL_TEXT = -178,
+    VSCOLOR_LASTEX = -178
+  };
+
+  enum GRADIENTTYPE {
+    VSGRADIENT_FILETAB = 1,
+    VSGRADIENT_PANEL_BACKGROUND = 2,
+    VSGRADIENT_SHELLBACKGROUND = 3,
+    VSGRADIENT_TOOLBOX_HEADING = 4,
+    VSGRADIENT_TOOLTAB = 5,
+    VSGRADIENT_TOOLWIN_ACTIVE_TITLE_BAR = 6,
+    VSGRADIENT_TOOLWIN_INACTIVE_TITLE_BAR = 7,
+    VSGRADIENT_TOOLWIN_BACKGROUND = 8
+  };
+
+  enum VSCURSORTYPE {
+    VSCURSOR_APPSTARTING = 1,
+    VSCURSOR_COLUMNSPLIT_EW = 2,
+    VSCURSOR_COLUMNSPLIT_NS = 3,
+    VSCURSOR_CONTROL_COPY = 4,
+    VSCURSOR_CONTROL_DELETE = 5,
+    VSCURSOR_CONTROL_MOVE = 6,
+    VSCURSOR_CROSS = 7,
+    VSCURSOR_DRAGDOCUMENT_MOVE = 8,
+    VSCURSOR_DRAGDOCUMENT_NOEFFECT = 9,
+    VSCURSOR_DRAGSCRAP_COPY = 10,
+    VSCURSOR_DRAGSCRAP_MOVE = 11,
+    VSCURSOR_DRAGSCRAP_SCROLL = 12,
+    VSCURSOR_HAND = 13,
+    VSCURSOR_IBEAM = 14,
+    VSCURSOR_ISEARCH = 15,
+    VSCURSOR_ISEARCH_UP = 16,
+    VSCURSOR_MACRO_RECORD_NO = 17,
+    VSCURSOR_NO = 18,
+    VSCURSOR_NOMOVE_2D = 19,
+    VSCURSOR_NOMOVE_HORIZ = 20,
+    VSCURSOR_NOMOVE_VERT = 21,
+    VSCURSOR_PAN_EAST = 22,
+    VSCURSOR_PAN_NE = 23,
+    VSCURSOR_PAN_NORTH = 24,
+    VSCURSOR_PAN_NW = 25,
+    VSCURSOR_PAN_SE = 26,
+    VSCURSOR_PAN_SOUTH = 27,
+    VSCURSOR_PAN_SW = 28,
+    VSCURSOR_PAN_WEST = 29,
+    VSCURSOR_POINTER = 30,
+    VSCURSOR_POINTER_REVERSE = 31,
+    VSCURSOR_SIZE_NS = 32,
+    VSCURSOR_SIZE_EW = 33,
+    VSCURSOR_SIZE_NWSE = 34,
+    VSCURSOR_SIZE_NESW = 35,
+    VSCURSOR_SIZE_ALL = 36,
+    VSCURSOR_SPLIT_EW = 37,
+    VSCURSOR_SPLIT_NS = 38,
+    VSCURSOR_UPARROW = 39,
+    VSCURSOR_WAIT = 40
+  };
+
+  enum BWI_IMAGE_POS {
+    BWI_IMAGE_POS_LEFT = 0,
+    BWI_IMAGE_POS_RIGHT = 0x1,
+    BWI_IMAGE_ONLY = 0x2
+  };
+
   struct __declspec(novtable) IVsUIShell2 {
     // == IUnknown ==
     virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
@@ -2091,6 +4274,15 @@ struct __declspec(novtable) IVsTrackProjectDocuments3 {
   // ================================ IVsUIShell4 ================================
 #pragma region
   const GUID IID_IVsUIShell4 = { 0xc59cda92, 0xd99d, 0x42da, { 0xb2, 0x21, 0x8e, 0x36, 0xb8, 0xdc, 0x47, 0x8e } };
+
+  enum WINDOWFRAMETYPEFLAGS {
+    WINDOWFRAMETYPE_Document = 0x1,
+    WINDOWFRAMETYPE_Tool = 0x2,
+    WINDOWFRAMETYPE_All = 0xffffff,
+    WINDOWFRAMETYPE_Uninitialized = 0x80000000,
+    WINDOWFRAMETYPE_AllStates = 0xff000000
+  };
+
   struct __declspec(novtable) IVsUIShell4 {
     // == IUnknown ==
     virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
@@ -2108,6 +4300,12 @@ struct __declspec(novtable) IVsTrackProjectDocuments3 {
   // ================================ IVsUIShell5 ================================
 #pragma region
   const GUID IID_IVsUIShell5 = { 0x2b70ea30, 0x51f2, 0x48bb, { 0xab, 0xa8, 0x05, 0x19, 0x46, 0xa3, 0x72, 0x83 } };
+
+  enum THEMEDCOLORTYPE {
+    TCT_Background = 0,
+    TCT_Foreground = (TCT_Background + 1)
+  };
+
   struct __declspec(novtable) IVsUIShell5 {
     // == IUnknown ==
     virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
@@ -2116,7 +4314,7 @@ struct __declspec(novtable) IVsTrackProjectDocuments3 {
 
     // == IVsUIShell5 ==
     virtual HRESULT __stdcall GetOpenFileNameViaDlgEx2(VSOPENFILENAMEW *openFileName, const wchar_t *helpTopic, const wchar_t *openButtonLabel) = 0;
-    virtual HRESULT __stdcall GetThemedColor(const GUID &colorCategory, const wchar_t *colorName, THEMEDCOLORTYPE colorType, VS_RGBA *colorRgba) = 0;
+    virtual HRESULT __stdcall GetThemedColor(const GUID &colorCategory, const wchar_t *colorName, THEMEDCOLORTYPE colorType, DWORD *colorRgba) = 0;
     virtual HRESULT __stdcall GetKeyBindingScope(const GUID &keyBindingScope, BSTR *pbstrName) = 0;
     virtual HRESULT __stdcall EnumKeyBindingScopes(IVsEnumGuids **ppEnum) = 0;
     virtual HRESULT __stdcall ThemeWindow(HWND hwnd, VARIANT_BOOL *pfThemeApplied) = 0;
@@ -2136,7 +4334,7 @@ struct __declspec(novtable) IVsTrackProjectDocuments3 {
 
     // == IVsUIShell5 ==
     virtual HRESULT __stdcall GetOpenFileNameViaDlgEx2(VSOPENFILENAMEW *openFileName, const wchar_t *helpTopic, const wchar_t *openButtonLabel) = 0;
-    virtual HRESULT __stdcall GetThemedColor(const GUID &colorCategory, const wchar_t *colorName, THEMEDCOLORTYPE colorType, VS_RGBA *colorRgba) = 0;
+    virtual HRESULT __stdcall GetThemedColor(const GUID &colorCategory, const wchar_t *colorName, THEMEDCOLORTYPE colorType, DWORD *colorRgba) = 0;
     virtual HRESULT __stdcall GetKeyBindingScope(const GUID &keyBindingScope, BSTR *pbstrName) = 0;
     virtual HRESULT __stdcall EnumKeyBindingScopes(IVsEnumGuids **ppEnum) = 0;
     virtual HRESULT __stdcall ThemeWindow(HWND hwnd, VARIANT_BOOL *pfThemeApplied) = 0;
@@ -2166,6 +4364,12 @@ struct __declspec(novtable) IVsTrackProjectDocuments3 {
   // ================================ IVsBuildPropertyStorage ================================
 #pragma region
   const GUID IID_IVsBuildPropertyStorage = { 0xe7355fdf, 0xa118, 0x48f5, { 0x96, 0x55, 0x7e, 0xfd, 0x9d, 0x2d, 0xc3, 0x52 } };
+
+  enum PersistStorageType {
+    PST_PROJECT_FILE = 1,
+    PST_USER_FILE = 2
+  };
+
   struct __declspec(novtable) IVsBuildPropertyStorage {
     // == IUnknown ==
     virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
@@ -2295,50 +4499,31 @@ struct __declspec(novtable) IVsTrackProjectDocuments3 {
     // itemidParent: The ID of the parent item.
     // itemidSiblingPrev: The ID of the previous sibling item.
     // itemidAdded: The ID of the added item.
-    virtual HRESULT __stdcall OnItemAdded(VSITEMID itemidParent, VSITEMID itemidSiblingPrev, VSITEMID itemidAdded) = 0;
+    virtual HRESULT __stdcall OnItemAdded(DWORD itemidParent, DWORD itemidSiblingPrev, DWORD itemidAdded) = 0;
 
     // Notifies the client when items are appended to the hierarchy.
     // itemidParent: The ID of the parent item.
-    virtual HRESULT __stdcall OnItemsAppended(VSITEMID itemidParent) = 0;
+    virtual HRESULT __stdcall OnItemsAppended(DWORD itemidParent) = 0;
 
     // Notifies the client when an item is deleted from the hierarchy.
     // itemid: The ID of the deleted item.
-    virtual HRESULT __stdcall OnItemDeleted(VSITEMID itemid) = 0;
+    virtual HRESULT __stdcall OnItemDeleted(DWORD itemid) = 0;
 
     // Notifies the client when a property of an item in the hierarchy changes.
     // itemid: The ID of the item whose property changed.
     // propid: The ID of the property that changed.
     // flags: Additional flags indicating the nature of the change.
-    virtual HRESULT __stdcall OnPropertyChanged(VSITEMID itemid, VSHPROPID propid, DWORD flags) = 0;
+    virtual HRESULT __stdcall OnPropertyChanged(DWORD itemid, VSHPROPID propid, DWORD flags) = 0;
 
     // Notifies the client when items in the hierarchy need to be invalidated.
     // itemidParent: The ID of the parent item whose children need to be invalidated.
-    virtual HRESULT __stdcall OnInvalidateItems(VSITEMID itemidParent) = 0;
+    virtual HRESULT __stdcall OnInvalidateItems(DWORD itemidParent) = 0;
 
     // Notifies the client when an icon in the hierarchy needs to be invalidated.
     // hicon: The handle to the icon to invalidate.
     virtual HRESULT __stdcall OnInvalidateIcon(HICON hicon) = 0;
   };
 #pragma endregion
-
-  // From Microsoft.VisualStudio.Shell.Interop.11.0.xml
-  // Specifies how the task is run.
-  enum VSTASKRUNCONTEXT {
-    // Runs the task on the background thread pool with normal priority.
-    VSTC_BACKGROUNDTHREAD = 0,
-    // Runs the task on UI thread using RPC callback to be executed as soon as possible. Note: This context may cause reentrancy.
-    VSTC_UITHREAD_SEND = 1,
-    // Runs the task on the UI thread using background priority(that is, below user input). Tasks are scheduled even while modal dialogs are open. Tasks are scheduled to occur when no user input is pending, plus a short delay. Appropriate for short tasks or slightly longer tasks.
-    VSTC_UITHREAD_BACKGROUND_PRIORITY = 2,
-    // Runs the task on the UI thread when Visual Studio is idle. Tasks are not scheduled till most modal dialogs have been dismissed. Appropriate for very short running tasks.
-    VSTC_UITHREAD_IDLE_PRIORITY = 3,
-    // Runs the task on the current context(that is, the UI thread or the background thread).
-    VSTC_CURRENTCONTEXT = 4,
-    // Runs the task on background thread pool and sets the background mode on the thread while the task is running. This is useful for IO heavy background tasks that are not time critical.
-    VSTC_BACKGROUNDTHREAD_LOW_IO_PRIORITY = 5,
-    // Runs the task on UI thread using Dispatcher with Normal priority.
-    VSTC_UITHREAD_NORMAL_PRIORITY = 6
-  };
 }
 
 #undef UNUSED_FUNC

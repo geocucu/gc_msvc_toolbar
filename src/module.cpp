@@ -1,14 +1,6 @@
 #include "common.h"
 
-// ======== ATL ======== 
-#define _ATL_APARTMENT_THREADED
-#define _ATL_REGISTER_PER_USER
-#include <atlbase.h>
-#include <atlcom.h>
-#include <atlwin.h>
-#include <atlstr.h>
-#include <atlfile.h>
-#include <atlsafe.h>
+// TODO: FIX LIFETIMES 
 
 // ======== VSSDK ======== 
 #include "vsix_ivs.h"
@@ -23,8 +15,8 @@
 // ======== COM Utils ======== 
 #pragma region
 
-CComPtr<IStream> com_duplicate_stream(IStream *src) {
-	CComPtr<IStream> new_stream;
+IStream* com_duplicate_stream(IStream *src) {
+	IStream *new_stream;
 	HRESULT hr = S_OK;
 
 	hr = CreateStreamOnHGlobal(0, TRUE, &new_stream);
@@ -54,8 +46,8 @@ CComPtr<IStream> com_duplicate_stream(IStream *src) {
 
 // ================================ DATA ================================
 struct {
-	IServiceProvider *provider;
-	CComPtr<vsix::_DTE> dte;
+	vsix::IServiceProvider *provider;
+	vsix::_DTE *dte;
 } vs_services;
 
 IStream *project_streams[64];
@@ -68,17 +60,17 @@ HRESULT on_cmdline_args(VARIANT *in) {
 	// break, even with marshaling.
 	
 	// Do not release!
-	IVsHierarchy *proj;
+	vsix::IVsHierarchy *proj;
 	HRCALL(CoGetInterfaceAndReleaseStream(com_duplicate_stream(project_streams[0]), vsix::IID_IVsHierarchy, (void **)&proj));
 
-	CComPtr<vsix::IVsBuildPropertyStorage> props;
+	vsix::IVsBuildPropertyStorage *props;
 	HRCALL(proj->QueryInterface(vsix::IID_IVsBuildPropertyStorage, (void **)&props));
 
 	// == TODO: HARDCODED == 
 	HRCALL(props->SetPropertyValue(
 			L"LocalDebuggerCommandArguments",
 			L"Release|x64",
-			PST_USER_FILE,
+			vsix::PST_USER_FILE,
 			in->bstrVal));
 
 	return S_OK;
@@ -94,13 +86,13 @@ HRESULT pkg_on_startup() {
 
 	// == IVs* interfaces ==
 	{
-		CComPtr<vsix::IVsSolution> sln;
+		vsix::IVsSolution *sln;
 		HRCALL(vs_services.provider->QueryService(vsix::IID_IVsSolution, vsix::IID_IVsSolution, (void **)&sln));
 
-		CComPtr<IEnumHierarchies> hierarchies;
-		HRCALL(sln->GetProjectEnum(__VSENUMPROJFLAGS::EPF_ALLPROJECTS, GUID_NULL, &hierarchies));
+		vsix::IEnumHierarchies *hierarchies;
+		HRCALL(sln->GetProjectEnum(vsix::VSENUMPROJFLAGS::EPF_ALLPROJECTS, GUID_NULL, &hierarchies));
 
-		CComPtr<IVsHierarchy> hierarchy;
+		vsix::IVsHierarchy *hierarchy;
 		ULONG fetched = 0;
 		while (hierarchies->Next(1, &hierarchy, &fetched) == S_OK && fetched > 0) {
 			if (!hierarchy) {
@@ -110,27 +102,29 @@ HRESULT pkg_on_startup() {
 			HRCALL(CoMarshalInterThreadInterfaceInStream(vsix::IID_IVsHierarchy, (IUnknown *)hierarchy, &project_streams[num_projects]));
 			num_projects++;
 
-			hierarchy.Release();
+			hierarchy->Release();
 		}
 	}
 
 	// == Older _DTE ==
 	{
-		CComPtr<VxDTE::_DTE> dte;
-		HRCALL(vs_services.provider->QueryService(__uuidof(VxDTE::_DTE), __uuidof(VxDTE::_DTE), (void**)&dte));
+		vsix::_DTE *dte;
+		HRCALL(vs_services.provider->QueryService(vsix::IID__DTE, vsix::IID__DTE, (void**)&dte));
 
-		CComPtr<IUnknown> sln_CLR;
-		HRCALL(dte->get_Solution((VxDTE::Solution **)&sln_CLR));
+		IUnknown *sln_CLR;
+		HRCALL(dte->get_Solution((vsix::Solution **)&sln_CLR));
 
 		// Actual sln
-		CComPtr<VxDTE::_Solution> sln;
-		HRCALL(sln_CLR->QueryInterface(__uuidof(VxDTE::_Solution), (void **)&sln));
+		vsix::_Solution *sln;
+		HRCALL(sln_CLR->QueryInterface(vsix::IID__Solution, (void **)&sln));
 
-		CComPtr<VxDTE::SolutionBuild> sln_build;
+		vsix::SolutionBuild *sln_build;
 		HRCALL(sln->get_SolutionBuild(&sln_build));
-
-		CComVariant projects;
+		
+		VARIANT projects;
+		VariantInit(&projects);
 		sln_build->get_StartupProjects(&projects);
+		VariantClear(&projects);
 	}
 
 	return S_OK;
@@ -152,182 +146,114 @@ HRESULT pkg_command_map(const GUID &cmdset_id, DWORD cmd_id, DWORD flags, VARIAN
 // ================================ BOILERPLATE START (IGNORE BELOW THIS LINE) ================================
 #pragma region 
 
-struct __declspec(novtable) pkg_t :
-	// Non-thread safe COM object; partial implementation for IUnknown (the COM map below provides the rest).
-	CComObjectRootEx<CComSingleThreadModel>,
-	CComCoClass<pkg_t, &CLSID_pkg>,
-	// Implement IVsPackage => make this COM object into a VS Package.
-	VSL::IVsPackageImpl<pkg_t, &CLSID_pkg>,
-	VSL::IOleCommandTargetImpl<pkg_t>,
-	// Provides consumers of this object with the ability to determine which interfaces support extended error information.
-	ATL::ISupportErrorInfoImpl<&IID_IVsPackage>
-{
-	// ==== Start of COM map ==== 
-	// Provides a portion of the implementation of IUnknown, in particular the list of interfaces the pkg_t object will support via QueryInterface
-	
-	//BEGIN_COM_MAP(pkg_t)
-	typedef pkg_t _ComMapClass; 
-	static HRESULT __stdcall _Cache(void *pv, const IID &iid, void **ppvObject, u64 dw) {
-		pkg_t *p = (pkg_t *)pv;
-		p->Lock(); 
-		HRESULT hr = E_FAIL; 
-		__try {
-			hr = ATL::CComObjectRootBase::_Cache(pv, iid, ppvObject, dw);
+struct pkg_t : vsix::IVsPackage, IOleCommandTarget {
+	long refcount = 0;
+
+	// ==== IUnknown ==== 
+	HRESULT __stdcall QueryInterface(const IID &iid, void **obj) override {
+		*obj = 0;
+		if (InlineIsEqualGUID(iid, IID_IUnknown) || InlineIsEqualGUID(iid, vsix::IID_IVsPackage)) {
+			*obj = static_cast<IVsPackage *>(this);
 		}
-		__finally {
-			p->Unlock();
-		} 
-		return hr;
-	} 
-	
-	IUnknown *_GetRawUnknown() {
-		return (IUnknown *)((i64)this + _GetEntries()->dw);
-	} 
-	
-	IUnknown *GetUnknown() {
-		return (IUnknown *)((i64)this + _GetEntries()->dw);
-	} 
-	
-	HRESULT _InternalQueryInterface(const IID &iid, void **ppvObject) {
-		return this->InternalQueryInterface(this, _GetEntries(), iid, ppvObject);
-	} 
-	
-	static const ATL::_ATL_INTMAP_ENTRY* _GetEntries() {
-		static pkg_t *addr_8 = (pkg_t *)8; // Fake non-null addr for adjusting pointers by base interfaces (within the derived pkg_t)
-		static u64 dw_IVsPackage        = u64((IVsPackage *)       addr_8) - 8; // Offset of vfptr for IVsPackage
-		static u64 dw_IOleCommandTarget = u64((IOleCommandTarget *)addr_8) - 8; // Offset of vfptr for IOleCommandTarget
-		static u64 dw_ISupportErrorInfo = u64((ISupportErrorInfo *)addr_8) - 8; // Offset of vfptr for ISupportErrorInfo
-		static _ATL_CREATORARGFUNC *func = (ATL::_ATL_CREATORARGFUNC *)1; // Sentinel?
+		else if (InlineIsEqualGUID(iid, IID_IOleCommandTarget)) {
+			*obj = static_cast<IOleCommandTarget *>(this);
+		}
+		else {
+			return E_NOINTERFACE;
+		}
 
-		static const ATL::_ATL_INTMAP_ENTRY entries[] = {
-			//COM_INTERFACE_ENTRY(IVsPackage)
-			{ &IID_IVsPackage, dw_IVsPackage, func },
-		
-			//COM_INTERFACE_ENTRY(IOleCommandTarget)
-			{ &IID_IOleCommandTarget, dw_IOleCommandTarget, func },
-		
-			//COM_INTERFACE_ENTRY(ISupportErrorInfo)
-			{ &IID_ISupportErrorInfo, dw_ISupportErrorInfo, func },
-
-			//END_COM_MAP()
-__if_exists(_GetAttrEntries) { 
-			{ 0, (u64)_GetAttrEntries, _ChainAttr }, } 
-
-			{ 0, 0, 0 } 
-		}; 
-		
-		// Return &entries[1] instead, if the map contains { 0, (DWORD_PTR)L"pkg_t", 0 } as the first elem.
-		return entries;
-	} 
-	
-	virtual ULONG __stdcall AddRef() = 0; 
-	virtual ULONG __stdcall Release() = 0; 
-	virtual __declspec(nothrow) HRESULT __stdcall QueryInterface(const IID &, void **) = 0;
-
-	// ==== End of COM map === 
-
-	// Provide error information if it is not possible to load the UI dll. 
-	static const LoadUILibrary::ExtendedErrorInfo &GetLoadUILibraryErrorInfo() {
-		static LoadUILibrary::ExtendedErrorInfo info(L"The product is not installed properly. Please reinstall.");
-		return info;
+		((IUnknown*)*obj)->AddRef();
+		return S_OK;
 	}
 
-	// DLL is registered with VS via a pkgdef file. Don't do anything if asked to self-register.
-	static HRESULT UpdateRegistry(BOOL bRegister) { return S_OK; }
-	static CommandHandler *GetCommand(const VSL::CommandId &target_id) { return 0; }
+	ULONG __stdcall AddRef() override {
+		return _InterlockedIncrement(&refcount);
+	}
+
+	ULONG __stdcall Release() override {
+		long new_refcount = _InterlockedDecrement(&refcount);
+		if (new_refcount == 0) {
+			delete this;
+		}
+		return new_refcount;
+	}
+
+	// == IVsPackage == 
+	HRESULT __stdcall SetSite(vsix::IServiceProvider *service_provider) override {
+		vs_services.provider = service_provider;
+		HRCALL(pkg_on_startup());
+
+		return S_OK;
+	}
+
+	HRESULT __stdcall QueryClose(BOOL *pbCanClose) override {
+		*pbCanClose = TRUE;
+		return S_OK;
+	}
+
+	HRESULT __stdcall Close() override {
+		return S_OK;
+	}
+
+	HRESULT __stdcall GetAutomationObject(const wchar_t *prop_name, vsix::IDispatch **dispatch) override { return E_NOTIMPL; }
+	HRESULT __stdcall CreateTool(const GUID &guid_persistance_slot) override { return E_NOTIMPL; }
+	HRESULT __stdcall ResetDefaults(vsix::VSPKGRESETFLAGS flags) override { return E_NOTIMPL; }
+	HRESULT __stdcall GetPropertyPage(const GUID &guid_page, vsix::VSPROPSHEETPAGE *page) override { return E_NOTIMPL; }
+
+	// == IOleCommandTarget == 
+	HRESULT __stdcall QueryStatus(const GUID *pCmdGroupGuid, ULONG cCmds, OLECMD pCmds[], OLECMDTEXT *pCmdText) override { return E_NOTIMPL; }
 
 	HRESULT __stdcall Exec(const GUID *pCmdGroupGuid, DWORD nCmdID, DWORD nCmdexecopt, VARIANT *in, VARIANT *out) override {
 		return pkg_command_map(*pCmdGroupGuid, nCmdID, nCmdexecopt, in, out);
 	}
 
-	HRESULT __stdcall SetSite(IServiceProvider *service_provider) override {
-		if (!vs_services.provider) {
-			// Only on init. 
-			vs_services.provider = service_provider;
-			HRCALL(pkg_on_startup());
+	// ==== Factory ====
+	struct factory_t : IClassFactory {
+		long refcount = 0;
+
+		HRESULT __stdcall CreateInstance(IUnknown *agg_outer, const IID &iid, void **obj) override {
+			if (agg_outer) {
+				return CLASS_E_NOAGGREGATION;
+			}
+
+			pkg_t *p = new pkg_t;
+			p->QueryInterface(iid, obj);
+			return S_OK;
 		}
 
-		return VSL::IVsPackageImpl<pkg_t, &CLSID_pkg>::SetSite(service_provider);
-	}
+		HRESULT __stdcall LockServer(BOOL) override { return S_OK; }
+
+		HRESULT __stdcall QueryInterface(const IID &iid, void **obj) override { 
+			if (InlineIsEqualGUID(iid, IID_IUnknown) || InlineIsEqualGUID(iid, IID_IClassFactory)) {
+				*obj = static_cast<IClassFactory *>(this);
+				AddRef();
+				return S_OK;
+			}
+
+			*obj = 0;
+			return E_NOINTERFACE;
+		}
+		
+		ULONG __stdcall AddRef() override {
+			return _InterlockedIncrement(&refcount);
+		}
+
+		ULONG __stdcall Release() override {
+			long new_refcount = _InterlockedDecrement(&refcount);
+			if (new_refcount == 0) {
+				delete this;
+			}
+			return new_refcount;
+		}
+	};
 };
 
-// This exposes pkg_t for instantiation via DllGetClassObject; however, an instance
-// can not be created by CoCreateInstance, as pkg_t is specifically registered with
-// VS, not the the system in general.
-OBJECT_ENTRY_AUTO(CLSID_pkg, pkg_t)
-
-// Should be instantiated before the point where DllGetClassObject(factory...) goes through 
-struct dll_module_t : CAtlDllModuleT<dll_module_t> {} dll_module;
-
-extern "C" BOOL DllMain(HINSTANCE, DWORD reason, void *) {
-	if (reason == DLL_THREAD_ATTACH && CAtlBaseModule::m_bInitFailed) {
-		return 0;
-	}
-
-	return 1;
-}
-
-extern "C" HRESULT DllCanUnloadNow() {
-	if (dll_module.m_nLockCnt == 0) {
-		return S_OK;
-	}
-
-	return S_FALSE;
-}
-
-// Returns a class factory to create an object of the requested type
-extern "C" HRESULT DllGetClassObject(const IID &rclsid, const IID &riid, void **ppv) {
-	if (!ppv) {
-		return E_POINTER;
-	}
-
-	*ppv = 0;
-
-	HRESULT hr = S_OK;
-
-	for (_ATL_OBJMAP_ENTRY_EX **iter = _AtlComModule.m_ppAutoObjMapFirst; iter < _AtlComModule.m_ppAutoObjMapLast; iter++) {
-		if (*iter == 0) {
-			continue;
-		}
-
-		const _ATL_OBJMAP_ENTRY_EX *entry = *iter;
-
-		if (!entry->pfnGetClassObject || !InlineIsEqualGUID(rclsid, *entry->pclsid)) {
-			continue;
-		}
-
-		_ATL_OBJMAP_CACHE *cache = entry->pCache;
-
-		if (!cache->pCF) {
-			CComCritSecLock<CComCriticalSection> lock(_AtlComModule.m_csObjMap, false);
-			hr = lock.Lock();
-			if (FAILED(hr)) {
-				break;
-			}
-
-			if (!cache->pCF) {
-				IUnknown *factory = 0;
-				hr = entry->pfnGetClassObject(entry->pfnCreateInstance, IID_IUnknown, (void**)&factory);
-				if (SUCCEEDED(hr)) {
-					cache->pCF = (IUnknown*)EncodePointer(factory);
-				}
-			}
-		}
-
-		if (cache->pCF) {
-			// Decode factory pointer
-			IUnknown *factory = (IUnknown*)DecodePointer(cache->pCF);
-			hr = factory->QueryInterface(riid, ppv);
-		}
-
-		break;
-	}
-
-	if (*ppv == NULL && hr == S_OK) {
-		hr = CLASS_E_CLASSNOTAVAILABLE;
-	}
-
-	return hr;
+_Check_return_
+extern "C" HRESULT DllGetClassObject(_In_ const IID &, _In_ const IID &, _Outptr_ void **ppv) {
+	pkg_t::factory_t *factory = new pkg_t::factory_t;
+	factory->refcount = 1;
+	*ppv = factory;
+	return S_OK;
 }
 
 #pragma endregion
