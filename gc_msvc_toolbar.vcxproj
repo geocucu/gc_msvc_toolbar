@@ -74,10 +74,10 @@
       <RegisterOutput>false</RegisterOutput>
       <AdditionalDependencies>vsguids.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <ModuleDefinitionFile>.\gc_msvc_toolbar.def</ModuleDefinitionFile>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ImportLibrary>$(OutDir)gc_msvc_toolbar.lib</ImportLibrary>
+      <AdditionalOptions>/EXPORT:DllGetClassObject %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -104,10 +104,10 @@
       <RegisterOutput>false</RegisterOutput>
       <AdditionalDependencies>vsguids.lib;msvcrt.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <ModuleDefinitionFile>.\gc_msvc_toolbar.def</ModuleDefinitionFile>
       <SubSystem>Windows</SubSystem>
       <ImportLibrary>$(OutDir)gc_msvc_toolbar.lib</ImportLibrary>
       <GenerateDebugInformation>false</GenerateDebugInformation>
+      <AdditionalOptions>/EXPORT:DllGetClassObject %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -122,7 +122,6 @@
     <None Include="docs\props_debugging.md" />
     <None Include="res\ui.vsct" />
     <None Include="res\vsct.rc" />
-    <None Include="gc_msvc_toolbar.def" />
     <ResourceCompile Include="res\gc_msvc_toolbar.rc" />
     <PkgdefFile Include="gc_msvc_toolbar.pkgdef" />
     <Image Include="res\images.png" />

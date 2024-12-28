@@ -46,9 +46,6 @@
     <PkgdefFile Include="gc_msvc_toolbar.pkgdef">
       <Filter>src</Filter>
     </PkgdefFile>
-    <None Include="gc_msvc_toolbar.def">
-      <Filter>src</Filter>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="res\gc_msvc_toolbar.rc">
