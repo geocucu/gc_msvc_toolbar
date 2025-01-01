@@ -42,11 +42,17 @@ IStream* com_duplicate_stream(IStream *src) {
 // ================================ DATA ================================
 struct {
 	vsix::IServiceProvider *provider;
+
+	// == DTE ==
 	vsix::_DTE *dte;
+	vsix::_Solution *sln;
+	vsix::SolutionBuild *sln_build;
 } vs_services;
 
-IStream *project_streams[64];
-int num_projects;
+struct {
+	IStream *project_streams[64];
+	int num_projects;
+} sln_state;
 
 // ================================ COMMANDLINE ARGS COMBO BOX ================================
 
@@ -56,7 +62,7 @@ HRESULT on_cmdline_args(VARIANT *in) {
 	
 	// Do not release!
 	vsix::IVsHierarchy *proj = 0;
-	HRCALL(CoGetInterfaceAndReleaseStream(com_duplicate_stream(project_streams[0]), vsix::IID_IVsHierarchy, (void **)&proj));
+	HRCALL(CoGetInterfaceAndReleaseStream(com_duplicate_stream(sln_state.project_streams[0]), vsix::IID_IVsHierarchy, (void **)&proj));
 
 	vsix::IVsBuildPropertyStorage *props = 0;
 	HRCALL(proj->QueryInterface(vsix::IID_IVsBuildPropertyStorage, (void **)&props));
@@ -80,42 +86,98 @@ HRESULT pkg_on_startup() {
 	// THREAD: VS Main
 
 	// == IVs* interfaces ==
+	vsix::IVsSolution *sln = 0;
+	HRCALL(vs_services.provider->QueryService(&sln));
+
+  // Query startup project by new IVsSolution
+  vsix::IVsSolutionBuildManager *sln_build_mgr = 0;
+  HRCALL(vs_services.provider->QueryService(vsix::IID_IVsSolutionBuildManager, vsix::IID_IVsSolutionBuildManager, (void**)&sln_build_mgr));
+
 	{
-		vsix::IVsSolution *sln = 0;
-		HRCALL(vs_services.provider->QueryService(&sln));
+		vsix::IVsHierarchy *startup_project = 0;
+		HRCALL(sln_build_mgr->get_StartupProject(&startup_project));
 
-		vsix::IEnumHierarchies *hierarchies = 0;
-		HRCALL(sln->GetProjectEnum(vsix::VSENUMPROJFLAGS::EPF_ALLPROJECTS, GUID_NULL, &hierarchies));
+    vsix::IVsProjectCfg *active_project_cfg = 0;
+    sln_build_mgr->FindActiveProjectCfg(NULL, NULL, startup_project, &active_project_cfg);
 
-		vsix::IVsHierarchy *hierarchy = 0;
-		ULONG fetched = 0;
-		while (hierarchies->Next(1, &hierarchy, &fetched) == S_OK && fetched > 0) {
-			if (!hierarchy) {
-				continue;
-			}
+		BSTR active_project_cfg_name;
+    active_project_cfg->get_DisplayName(&active_project_cfg_name); // Debug|x64
 
-			HRCALL(CoMarshalInterThreadInterfaceInStream(vsix::IID_IVsHierarchy, (IUnknown *)hierarchy, &project_streams[num_projects]));
-			num_projects++;
+    vsix::IVsProjectCfgProvider *project_cfg_provider = 0;
+    vsix::IVsBuildableProjectCfg *buildable_project_cfg = 0;
 
-			hierarchy->Release();
+    active_project_cfg->get_ProjectCfgProvider(&project_cfg_provider);
+    active_project_cfg->get_BuildableProjectCfg(&buildable_project_cfg);
+
+    VARIANT name, project_type;
+    VariantInit(&name);
+    VariantInit(&project_type); // C++
+
+    startup_project->GetProperty(VSITEMID_ROOT, vsix::VSHPROPID::VSHPROPID_Name, &name);
+    startup_project->GetProperty(VSITEMID_ROOT, vsix::VSHPROPID::VSHPROPID_ProjectType, &project_type);
+
+
+		VariantClear(&name);
+		VariantClear(&project_type); // C++
+	}
+
+	vsix::IEnumHierarchies *hierarchies = 0;
+	HRCALL(sln->GetProjectEnum(vsix::VSENUMPROJFLAGS::EPF_ALLPROJECTS, GUID_NULL, &hierarchies));
+
+	vsix::IVsHierarchy *hierarchy = 0;
+	ULONG fetched = 0;
+	while (hierarchies->Next(1, &hierarchy, &fetched) == S_OK && fetched > 0) {
+		if (!hierarchy) {
+			continue;
 		}
+
+		HRCALL(CoMarshalInterThreadInterfaceInStream(vsix::IID_IVsHierarchy, (IUnknown *)hierarchy, &sln_state.project_streams[sln_state.num_projects]));
+		sln_state.num_projects++;
+
+		hierarchy->Release();
 	}
 
 	// == Older _DTE ==
-	{
-		vsix::_DTE *dte = 0;
-		HRCALL(vs_services.provider->QueryService(&dte));
+	HRCALL(vs_services.provider->QueryService(&vs_services.dte));
+	HRCALL(vs_services.dte->get_Solution(&vs_services.sln));
+	HRCALL(vs_services.sln->get_SolutionBuild(&vs_services.sln_build));
 
-		vsix::_Solution *sln = 0;
-		HRCALL(dte->get_Solution(&sln));
+	VARIANT projects;
+	VariantInit(&projects);
+	vs_services.sln_build->get_StartupProjects(&projects);
+	VariantClear(&projects);
 
-		vsix::SolutionBuild *sln_build = 0;
-		HRCALL(sln->get_SolutionBuild(&sln_build));
+	vsix::SolutionConfigurations *sln_configs = 0;
+	vs_services.sln_build->get_SolutionConfigurations(&sln_configs);
+	long config_count = 0;
+	sln_configs->get_Count(&config_count);
+	for (int i = 0; i < config_count; ++i) {
+		vsix::SolutionConfiguration *cfg = 0;
+		VARIANT idx;
+		VariantInit(&idx);
+		idx.vt = VT_I4;
+		idx.lVal = i + 1;
+		sln_configs->Item(idx, &cfg);
+		BSTR name;
+		cfg->get_Name(&name);
+		VariantClear(&idx);
 
-		VARIANT projects;
-		VariantInit(&projects);
-		sln_build->get_StartupProjects(&projects);
-		VariantClear(&projects);
+		vsix::SolutionContexts *sln_contexts;
+		cfg->get_SolutionContexts(&sln_contexts);
+		long sln_contexts_count;
+		sln_contexts->get_Count(&sln_contexts_count);
+    for (int j = 0; j < sln_contexts_count; ++j) {
+      vsix::SolutionContext *ctx = 0;
+      VARIANT idx;
+      VariantInit(&idx);
+      idx.vt = VT_I4;
+      idx.lVal = j + 1;
+      sln_contexts->Item(idx, &ctx);
+			BSTR platform_name, cfg_name, proj_name;
+      ctx->get_PlatformName(&platform_name); // x64
+      ctx->get_ConfigurationName(&cfg_name); // Debug
+      ctx->get_ProjectName(&proj_name);      // List of projects with x64|Debug
+    }
 	}
 
 	return S_OK;

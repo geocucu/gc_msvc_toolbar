@@ -23,6 +23,9 @@
 // Placeholder in the vtable for functions that are either obsolete, bugged, or just unused (as of VS 2022).
 #define UNUSED_FUNC(index) virtual HRESULT __stdcall vfunc_UNUSED_##index() = 0;
 
+#define	VSITEMID_NIL	     0xFFFFFFFF
+#define	VSITEMID_ROOT      0xFFFFFFFE
+#define	VSITEMID_SELECTION 0xFFFFFFFD
 
 namespace vsix {
 #pragma region Forward Declarations
