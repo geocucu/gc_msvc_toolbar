@@ -2,14 +2,9 @@
 
 // TODO: FIX LIFETIMES 
 
-// ======== VSSDK ======== 
-#include "vsix_ivs.h"
-#include "vsix_dte.h"
-
-// ======== GUIDs/IDs ======== 
+#include "vsix.h"
 #include "..\res\guids.h"
 #include "..\res\resource.h"
-
 #include "debug_helper.h"
 
 // ======== COM Utils ======== 
@@ -60,10 +55,10 @@ HRESULT on_cmdline_args(VARIANT *in) {
 	// break, even with marshaling.
 	
 	// Do not release!
-	vsix::IVsHierarchy *proj;
+	vsix::IVsHierarchy *proj = 0;
 	HRCALL(CoGetInterfaceAndReleaseStream(com_duplicate_stream(project_streams[0]), vsix::IID_IVsHierarchy, (void **)&proj));
 
-	vsix::IVsBuildPropertyStorage *props;
+	vsix::IVsBuildPropertyStorage *props = 0;
 	HRCALL(proj->QueryInterface(vsix::IID_IVsBuildPropertyStorage, (void **)&props));
 
 	// == TODO: HARDCODED == 
@@ -86,13 +81,13 @@ HRESULT pkg_on_startup() {
 
 	// == IVs* interfaces ==
 	{
-		vsix::IVsSolution *sln;
-		HRCALL(vs_services.provider->QueryService(vsix::IID_IVsSolution, vsix::IID_IVsSolution, (void **)&sln));
+		vsix::IVsSolution *sln = 0;
+		HRCALL(vs_services.provider->QueryService(&sln));
 
-		vsix::IEnumHierarchies *hierarchies;
+		vsix::IEnumHierarchies *hierarchies = 0;
 		HRCALL(sln->GetProjectEnum(vsix::VSENUMPROJFLAGS::EPF_ALLPROJECTS, GUID_NULL, &hierarchies));
 
-		vsix::IVsHierarchy *hierarchy;
+		vsix::IVsHierarchy *hierarchy = 0;
 		ULONG fetched = 0;
 		while (hierarchies->Next(1, &hierarchy, &fetched) == S_OK && fetched > 0) {
 			if (!hierarchy) {
@@ -108,19 +103,15 @@ HRESULT pkg_on_startup() {
 
 	// == Older _DTE ==
 	{
-		vsix::_DTE *dte;
-		HRCALL(vs_services.provider->QueryService(vsix::IID__DTE, vsix::IID__DTE, (void**)&dte));
+		vsix::_DTE *dte = 0;
+		HRCALL(vs_services.provider->QueryService(&dte));
 
-		IUnknown *sln_CLR;
-		HRCALL(dte->get_Solution((vsix::Solution **)&sln_CLR));
+		vsix::_Solution *sln = 0;
+		HRCALL(dte->get_Solution(&sln));
 
-		// Actual sln
-		vsix::_Solution *sln;
-		HRCALL(sln_CLR->QueryInterface(vsix::IID__Solution, (void **)&sln));
-
-		vsix::SolutionBuild *sln_build;
+		vsix::SolutionBuild *sln_build = 0;
 		HRCALL(sln->get_SolutionBuild(&sln_build));
-		
+
 		VARIANT projects;
 		VariantInit(&projects);
 		sln_build->get_StartupProjects(&projects);

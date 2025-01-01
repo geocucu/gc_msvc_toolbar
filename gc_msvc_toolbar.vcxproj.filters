@@ -26,10 +26,7 @@
     <ClInclude Include="res\resource.h">
       <Filter>headers</Filter>
     </ClInclude>
-    <ClInclude Include="src\vsix_dte.h">
-      <Filter>headers</Filter>
-    </ClInclude>
-    <ClInclude Include="src\vsix_ivs.h">
+    <ClInclude Include="src\vsix.h">
       <Filter>headers</Filter>
     </ClInclude>
     <ClInclude Include="src\debug_helper.h">

@@ -1,3 +1,5 @@
+## Known issues 
+
 #### 1. Startup project update
 
 I couldn't manage to find a reliable sink for "Startup Project" changed events. 
@@ -11,3 +13,9 @@ Hence the way changes in the choice of Startup Project are detected is by monito
 #### 3. Combo box input confirmation
 
 Must "submit" the text for the input event to register. E.g. press "Enter" or click on an item in the MRU list. Can't just input text and navigate away. 
+
+#### 4. Updates to project list in solution 
+
+Any projects added/removed in the current session will not be tracked for updates in the extension. 
+Only the projects in the solution at the time of the extension loading will be used.
+This is due to threading issues. 

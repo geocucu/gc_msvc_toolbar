@@ -113,8 +113,7 @@
   <ItemGroup>
     <ClInclude Include="src\common.h" />
     <ClInclude Include="src\debug_helper.h" />
-    <ClInclude Include="src\vsix_ivs.h" />
-    <ClInclude Include="src\vsix_dte.h" />
+    <ClInclude Include="src\vsix.h" />
     <None Include="docs\behaviour.md" />
     <None Include="docs\DTE_proj_property_names.md" />
     <None Include="docs\issues.md" />
