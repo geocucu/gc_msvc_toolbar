@@ -1,127 +1,82 @@
 #include "common.h"
 
-// TODO: FIX LIFETIMES 
-
 #include "vsix.h"
 #include "..\res\guids.h"
 #include "..\res\resource.h"
 #include "debug_helper.h"
 
-// ======== COM Utils ======== 
-#pragma region
-
-static IStream* com_duplicate_stream(IStream *src) {
-	IStream *new_stream;
-	HRESULT hr = S_OK;
-
-	hr = CreateStreamOnHGlobal(0, TRUE, &new_stream);
-	if (FAILED(hr)) {
-		msgbox_hresult(hr, L"Failed to create an IStream.");
-		return 0;
-	}
-
-	LARGE_INTEGER seek_start = {};
-	ULARGE_INTEGER stream_size = {};
-	src->Seek(seek_start, STREAM_SEEK_END, &stream_size);
-	src->Seek(seek_start, STREAM_SEEK_SET, 0);
-
-	hr = src->CopyTo(new_stream, stream_size, 0, 0);
-	if (FAILED(hr)) {
-		msgbox_hresult(hr, L"Failed to copy to duplicate stream");
-		return 0;
-	}
-
-	src->Seek(seek_start, STREAM_SEEK_SET, 0);
-	new_stream->Seek(seek_start, STREAM_SEEK_SET, 0);
-
-	return new_stream;
-}
-
-#pragma endregion
 
 // ================================ DATA ================================
 struct {
 	vsix::IServiceProvider *provider;
-
-  vsix::IVsSolutionBuildManager *sln_build_manager;
-  vsix::IVsHierarchy *startup_project;
 
   vsix::IVsUIShell *vs_ui_shell;
 	HWND main_hwnd;
 	WNDPROC main_wndproc;
 } vs_services;
 
-struct project_t {
-	wchar_t *name;
-	IStream *stream;
+struct command_args_t {
+	VARIANT in;
+
+  command_args_t() {
+    VariantInit(&in);
+  }
+
+  command_args_t(VARIANT *raw_in) {
+    VariantInit(&in);
+    VariantCopy(&in, raw_in);
+  }
+
+	~command_args_t() {
+		VariantClear(&in);
+	}
 };
-
-struct {
-  project_t projects[64];
-	int num_projects = 0;
-
-	int startup_project_index = -1;
-} sln_state;
 
 // ================================ COMMANDLINE ARGS COMBO BOX ================================
 #define WM_CMDLINE_ARGS (WM_USER + 1)
 
-LRESULT __stdcall VS_Main_WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
-	// THREAD: VS Main
+HRESULT on_cmdline_args(command_args_t *args) {
+  // THREAD: VS Main
 
-	switch (msg) {
+	vsix::IVsSolution *sln = 0;
+	HRCALL(vs_services.provider->QueryService(&sln));
 
-	case WM_CMDLINE_ARGS: {
-		VARIANT *in = reinterpret_cast<VARIANT *>(lparam);
+	vsix::IVsSolutionBuildManager *sln_build_manager = 0;
+	HRCALL(vs_services.provider->QueryService(&sln_build_manager));
 
-		// Neither DTE, nor IVs* based get_StartupProject here will work, even with marshaling.
-		// Can't reliably execute on the UI thread either...
-		// So the project list is fixed at initialisation, along with the startup project. 
+	vsix::IVsHierarchy *startup_project = 0;
+	HRCALL(sln_build_manager->get_StartupProject(&startup_project));
 
-		vsix::IVsProjectCfg *active_project_cfg = 0;
-		HRCALL(vs_services.sln_build_manager->FindActiveProjectCfg(0, 0, vs_services.startup_project, &active_project_cfg));
+	VARIANT name, type;
+	VariantInit(&name);
+	VariantInit(&type);
+	HRCALL(startup_project->GetProperty(VSITEMID_ROOT, vsix::VSHPROPID::VSHPROPID_ProjectType, &type));
+	HRCALL(startup_project->GetProperty(VSITEMID_ROOT, vsix::VSHPROPID::VSHPROPID_Name, &name));
+	bool is_cpp = wcsstr(type.bstrVal, L"C++") != 0;
 
-		BSTR active_project_cfg_name;
-		active_project_cfg->get_DisplayName(&active_project_cfg_name); // Debug|x64
+	vsix::IVsProjectCfg *active_project_cfg = 0;
+	HRCALL(sln_build_manager->FindActiveProjectCfg(0, 0, startup_project, &active_project_cfg));
 
-		// Do not release!
-		vsix::IVsHierarchy *proj = 0;
-		HRCALL(CoGetInterfaceAndReleaseStream(com_duplicate_stream(sln_state.projects[0].stream), vsix::IID_IVsHierarchy, (void **)&proj));
+	BSTR active_project_cfg_name;
+	active_project_cfg->get_DisplayName(&active_project_cfg_name); // E.g. Debug|x64
 
-		vsix::IVsBuildPropertyStorage *props = 0;
-		HRCALL(proj->QueryInterface(vsix::IID_IVsBuildPropertyStorage, (void **)&props));
+	vsix::IVsBuildPropertyStorage *props = 0;
+	HRCALL(startup_project->QueryInterface(vsix::IID_IVsBuildPropertyStorage, (void **)&props));
 
-		// == TODO: HARDCODED == 
-		HRCALL(props->SetPropertyValue(
-			L"LocalDebuggerCommandArguments",
-			L"Release|x64",
-			vsix::PST_USER_FILE,
-			in->bstrVal));
+	HRCALL(props->SetPropertyValue(
+		L"LocalDebuggerCommandArguments",
+		active_project_cfg_name,
+		vsix::PST_USER_FILE,
+		args->in.bstrVal));
 
-		// Restore WNDPROC
-		SetWindowLongPtrW(vs_services.main_hwnd, GWLP_WNDPROC, (LONG_PTR)vs_services.main_wndproc);
-
-		delete in;
-		return 0;
-	}
-
-	default:
-		return DefWindowProc(hwnd, msg, wparam, lparam);
-	}
-}
-
-static HRESULT on_cmdline_args(VARIANT *in) {
-  // THREAD: VS Main OR <some other>
-
-	vs_services.main_wndproc = (WNDPROC)SetWindowLongPtrW(vs_services.main_hwnd, GWLP_WNDPROC, (LONG_PTR)VS_Main_WndProc);
-
-	VARIANT *var = new VARIANT;
-	VariantInit(var);
-	VariantCopy(var, in);
-	if (!PostMessageW(vs_services.main_hwnd, WM_CMDLINE_ARGS, 0, reinterpret_cast<LPARAM>(var))) {
-		delete var;
-		return HRESULT_FROM_WIN32(GetLastError());
-	}
+	VariantClear(&name);
+	VariantClear(&type);
+	SysFreeString(active_project_cfg_name);
+	active_project_cfg->Release();
+	props->Release();
+	startup_project->Release();
+	sln_build_manager->Release();
+	sln->Release();
 
   return S_OK;
 }
@@ -129,13 +84,43 @@ static HRESULT on_cmdline_args(VARIANT *in) {
 // ================================ BOILERPLATE CONNECTION POINTS (START HERE) ================================
 #pragma region
 
+LRESULT __stdcall VS_Main_WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
+	// THREAD: VS Main
+
+  if (msg > WM_USER) {
+    command_args_t *args = (command_args_t *)lparam;
+
+    if (msg == WM_CMDLINE_ARGS) {
+      on_cmdline_args(args);
+    }
+    // else if (msg == ...) {
+    //   ...
+    // }
+
+		delete args;
+    return 0;
+  }
+
+  return CallWindowProcW(vs_services.main_wndproc, hwnd, msg, wparam, lparam);
+}
+
 static HRESULT pkg_command_map(const GUID &cmdset_id, DWORD cmd_id, DWORD flags, VARIANT *in, VARIANT *out) {
 	// THREAD: VS Main OR <some other> 
 	//         ^^^ can only go wild here 
 
+	command_args_t *args = new command_args_t(in);
+	bool post_ok = true;
 	if (InlineIsEqualGUID(cmdset_id, CLSID_cmdset) && cmd_id == CMDID_cmdline_args_control) {
-		on_cmdline_args(in);
+    post_ok = PostMessageW(vs_services.main_hwnd, WM_CMDLINE_ARGS, 0, (LPARAM)args);
 	}
+	// else if (IsInlineEqualGUID(cmdset_id, ...) && cmd_id == ...) {
+	//   ...
+	// }
+
+  if (!post_ok) {
+    delete args;
+    return HRESULT_FROM_WIN32(GetLastError());
+  }
 
 	return OLECMDERR_E_NOTSUPPORTED;
 }
@@ -145,95 +130,7 @@ static HRESULT pkg_command_map(const GUID &cmdset_id, DWORD cmd_id, DWORD flags,
 static HRESULT pkg_on_startup() {
 	// THREAD: VS Main
 
-	HRCALL(vs_services.provider->QueryService(&vs_services.vs_ui_shell));
-	HRCALL(vs_services.vs_ui_shell->GetDialogOwnerHwnd(&vs_services.main_hwnd));
-
-	vsix::IVsSolution *sln = 0;
-	HRCALL(vs_services.provider->QueryService(&sln));
-
-	// Save the startup project name for comparison within the enumeration later.
-	// Any failure here is critical, since no updates to the solution are tracked.
-	VARIANT startup_project_name;
-  VariantInit(&startup_project_name);
-	{
-		vsix::IVsSolutionBuildManager *sln_build_mgr = 0;
-		HRCALL(vs_services.provider->QueryService(&sln_build_mgr));
-		
-		vsix::IVsHierarchy *startup_project = 0;
-    HRCALL(sln_build_mgr->get_StartupProject(&startup_project));
-
-		VARIANT project_type;
-		VariantInit(&project_type); 
-
-		startup_project->GetProperty(VSITEMID_ROOT, vsix::VSHPROPID::VSHPROPID_Name, &startup_project_name);
-		startup_project->GetProperty(VSITEMID_ROOT, vsix::VSHPROPID::VSHPROPID_ProjectType, &project_type);
-
-    if (wcsstr(project_type.bstrVal, L"C++") == 0) {
-      msgbox_hresult(E_FAIL, L"Startup project is not a C++ project.");
-      return E_FAIL;
-    }
-
-		VariantClear(&project_type);
-	}
-
-	// Enumerate all projects in the sln, using IVs* interfaces
-  // Store an index to the startup project by matching names with the previously found startup project 
-	// Any updates to the solution's projects in this session will be ignored at the moment, including: add, rename, remove, change startup
-	vsix::IEnumHierarchies *hierarchies = 0;
-	HRCALL(sln->GetProjectEnum(vsix::VSENUMPROJFLAGS::EPF_ALLPROJECTS, GUID_NULL, &hierarchies));
-
-	vsix::IVsHierarchy *proj = 0;
-	ULONG fetched = 0;
-	while (hierarchies->Next(1, &proj, &fetched) == S_OK && fetched > 0) {
-		if (!proj) {
-			continue;
-		}
-
-    // Fixed limit of 64 projects
-    if (sln_state.num_projects >= 64) {
-      MessageBoxW(0, L"Too many projects in the solution. Max supported: 64.", L"[Warning] " PROJECT_NAME, MB_ICONWARNING | MB_OK);
-      break;
-    }
-
-		VARIANT name;
-    VariantInit(&name);
-		proj->GetProperty(VSITEMID_ROOT, vsix::VSHPROPID::VSHPROPID_ProjectName, &name);
-
-		// Ignore non-C++ projects
-		VARIANT type;
-    VariantInit(&type);
-		proj->GetProperty(VSITEMID_ROOT, vsix::VSHPROPID::VSHPROPID_ProjectType, &type);
-		if (wcsstr(type.bstrVal, L"C++")) {
-			// Serialise IVsHierarchy to IStream for GetPropertyValue/SetPropertyValue from non-UI thread calls later
-			IStream *stream = 0;
-			HRCALL(CoMarshalInterThreadInterfaceInStream(vsix::IID_IVsHierarchy, (IUnknown *)proj, &stream));
-
-			sln_state.projects[sln_state.num_projects++] = {
-				.name = name.bstrVal,
-				.stream = stream
-			};
-
-			if (wcscmp(name.bstrVal, startup_project_name.bstrVal) == 0) {
-				sln_state.startup_project_index = sln_state.num_projects - 1;
-			}
-    }
-		else {
-      VariantClear(&name);
-		}
-
-    VariantClear(&type);
-		proj->Release();
-  }
-
-  if (sln_state.startup_project_index == -1) {
-    msgbox_hresult(E_FAIL, L"Startup project not found in the solution.");
-    return E_FAIL;
-  }
-
-  VariantClear(&startup_project_name);
-
-	HRCALL(vs_services.provider->QueryService(&vs_services.sln_build_manager));
-	HRCALL(vs_services.sln_build_manager->get_StartupProject(&vs_services.startup_project));
+  // Do non-standard init stuff here...
 
 	return S_OK;
 }
@@ -278,6 +175,13 @@ struct pkg_t : vsix::IVsPackage, IOleCommandTarget {
 	// == IVsPackage == 
 	HRESULT __stdcall SetSite(vsix::IServiceProvider *service_provider) override {
 		vs_services.provider = service_provider;
+
+		HRCALL(service_provider->QueryService(&vs_services.vs_ui_shell));
+		HRCALL(vs_services.vs_ui_shell->GetDialogOwnerHwnd(&vs_services.main_hwnd));
+		// TODO: Check if it would be better to take over only temporarily:
+		//       Restore original after processing, then take over again whenever needed.
+		vs_services.main_wndproc = (WNDPROC)SetWindowLongPtrW(vs_services.main_hwnd, GWLP_WNDPROC, (LONG_PTR)VS_Main_WndProc);
+
 		HRCALL(pkg_on_startup());
 
 		return S_OK;
