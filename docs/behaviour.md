@@ -33,6 +33,8 @@ Using `IVsTaskSchedulerService` does not guarantee running on the "VS Main" thre
 passed to `CreateTask()`. 
 It will only run there if `Exec()` is called on "VS Main", and the context flag is one of the "UI thread" ones. 
 
+`PostExecCommand` from `IVsUIShell` is not guarenteed to make subsequent calls to the `Exec` of `IOleCommandTarget` run on the main UI thread. It is **not** a way to force the main UI thread to run the command.
+
 #### Extension registration
 
 The GUIDs specified in the .pkgdef don't seem to end up in the registry.  

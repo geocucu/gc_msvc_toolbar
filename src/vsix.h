@@ -8269,6 +8269,10 @@ struct __declspec(novtable) IVsTrackProjectDocuments3 {
       return QueryService(IID_IVsSolutionBuildManager, IID_IVsSolutionBuildManager, (void **)result);
     }
 
+    HRESULT QueryService(IVsUIShell **result) {
+      return QueryService(IID_IVsUIShell, IID_IVsUIShell, (void **)result);
+    }
+
     HRESULT QueryService(_DTE **result) {
       return QueryService(IID__DTE, IID__DTE, (void **)result);
     }

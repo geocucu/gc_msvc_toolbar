@@ -10,7 +10,7 @@
 // ======== COM Utils ======== 
 #pragma region
 
-IStream* com_duplicate_stream(IStream *src) {
+static IStream* com_duplicate_stream(IStream *src) {
 	IStream *new_stream;
 	HRESULT hr = S_OK;
 
@@ -43,8 +43,12 @@ IStream* com_duplicate_stream(IStream *src) {
 struct {
 	vsix::IServiceProvider *provider;
 
-  vsix::IVsSolutionBuildManager *sln_build_manager = 0;
-  vsix::IVsHierarchy *startup_project = 0;
+  vsix::IVsSolutionBuildManager *sln_build_manager;
+  vsix::IVsHierarchy *startup_project;
+
+  vsix::IVsUIShell *vs_ui_shell;
+	HWND main_hwnd;
+	WNDPROC main_wndproc;
 } vs_services;
 
 struct project_t {
@@ -60,42 +64,89 @@ struct {
 } sln_state;
 
 // ================================ COMMANDLINE ARGS COMBO BOX ================================
+#define WM_CMDLINE_ARGS (WM_USER + 1)
 
-HRESULT on_cmdline_args(VARIANT *in) {
-	// Neither DTE, nor IVs* based get_StartupProject here will work, even with marshaling.
-	// Can't reliably execute on the UI thread either...
-	// So the project list is fixed at initialisation, along with the startup project. 
+LRESULT __stdcall VS_Main_WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
+	// THREAD: VS Main
 
-	vsix::IVsProjectCfg *active_project_cfg = 0;
-	HRCALL(vs_services.sln_build_manager->FindActiveProjectCfg(0, 0, vs_services.startup_project, &active_project_cfg));
+	switch (msg) {
 
-	BSTR active_project_cfg_name;
-	active_project_cfg->get_DisplayName(&active_project_cfg_name); // Debug|x64
-	
-	// Do not release!
-	vsix::IVsHierarchy *proj = 0;
-	HRCALL(CoGetInterfaceAndReleaseStream(com_duplicate_stream(sln_state.projects[0].stream), vsix::IID_IVsHierarchy, (void **)&proj));
+	case WM_CMDLINE_ARGS: {
+		VARIANT *in = reinterpret_cast<VARIANT *>(lparam);
 
-	vsix::IVsBuildPropertyStorage *props = 0;
-	HRCALL(proj->QueryInterface(vsix::IID_IVsBuildPropertyStorage, (void **)&props));
+		// Neither DTE, nor IVs* based get_StartupProject here will work, even with marshaling.
+		// Can't reliably execute on the UI thread either...
+		// So the project list is fixed at initialisation, along with the startup project. 
 
-	// == TODO: HARDCODED == 
-	HRCALL(props->SetPropertyValue(
+		vsix::IVsProjectCfg *active_project_cfg = 0;
+		HRCALL(vs_services.sln_build_manager->FindActiveProjectCfg(0, 0, vs_services.startup_project, &active_project_cfg));
+
+		BSTR active_project_cfg_name;
+		active_project_cfg->get_DisplayName(&active_project_cfg_name); // Debug|x64
+
+		// Do not release!
+		vsix::IVsHierarchy *proj = 0;
+		HRCALL(CoGetInterfaceAndReleaseStream(com_duplicate_stream(sln_state.projects[0].stream), vsix::IID_IVsHierarchy, (void **)&proj));
+
+		vsix::IVsBuildPropertyStorage *props = 0;
+		HRCALL(proj->QueryInterface(vsix::IID_IVsBuildPropertyStorage, (void **)&props));
+
+		// == TODO: HARDCODED == 
+		HRCALL(props->SetPropertyValue(
 			L"LocalDebuggerCommandArguments",
 			L"Release|x64",
 			vsix::PST_USER_FILE,
 			in->bstrVal));
 
-	return S_OK;
+		// Restore WNDPROC
+		SetWindowLongPtrW(vs_services.main_hwnd, GWLP_WNDPROC, (LONG_PTR)vs_services.main_wndproc);
+
+		delete in;
+		return 0;
+	}
+
+	default:
+		return DefWindowProc(hwnd, msg, wparam, lparam);
+	}
+}
+
+static HRESULT on_cmdline_args(VARIANT *in) {
+  // THREAD: VS Main OR <some other>
+
+	vs_services.main_wndproc = (WNDPROC)SetWindowLongPtrW(vs_services.main_hwnd, GWLP_WNDPROC, (LONG_PTR)VS_Main_WndProc);
+
+	VARIANT *var = new VARIANT;
+	VariantInit(var);
+	VariantCopy(var, in);
+	if (!PostMessageW(vs_services.main_hwnd, WM_CMDLINE_ARGS, 0, reinterpret_cast<LPARAM>(var))) {
+		delete var;
+		return HRESULT_FROM_WIN32(GetLastError());
+	}
+
+  return S_OK;
 }
 
 // ================================ BOILERPLATE CONNECTION POINTS (START HERE) ================================
 #pragma region
 
+static HRESULT pkg_command_map(const GUID &cmdset_id, DWORD cmd_id, DWORD flags, VARIANT *in, VARIANT *out) {
+	// THREAD: VS Main OR <some other> 
+	//         ^^^ can only go wild here 
+
+	if (InlineIsEqualGUID(cmdset_id, CLSID_cmdset) && cmd_id == CMDID_cmdline_args_control) {
+		on_cmdline_args(in);
+	}
+
+	return OLECMDERR_E_NOTSUPPORTED;
+}
+
 // Init VSPackage
 // https://learn.microsoft.com/en-us/dotnet/api/microsoft.visualstudio.shell.interop.ivspackage.setsite?view=visualstudiosdk-2022
-HRESULT pkg_on_startup() {
+static HRESULT pkg_on_startup() {
 	// THREAD: VS Main
+
+	HRCALL(vs_services.provider->QueryService(&vs_services.vs_ui_shell));
+	HRCALL(vs_services.vs_ui_shell->GetDialogOwnerHwnd(&vs_services.main_hwnd));
 
 	vsix::IVsSolution *sln = 0;
 	HRCALL(vs_services.provider->QueryService(&sln));
@@ -185,17 +236,6 @@ HRESULT pkg_on_startup() {
 	HRCALL(vs_services.sln_build_manager->get_StartupProject(&vs_services.startup_project));
 
 	return S_OK;
-}
-
-HRESULT pkg_command_map(const GUID &cmdset_id, DWORD cmd_id, DWORD flags, VARIANT *in, VARIANT *out) {
-	// THREAD: VS Main OR <some other> 
-	//         ^^^ can only go wild here 
-
-	if (InlineIsEqualGUID(cmdset_id, CLSID_cmdset) && cmd_id == CMDID_cmdline_args_control) {
-		on_cmdline_args(in);
-	}
-
-	return OLECMDERR_E_NOTSUPPORTED;
 }
 
 #pragma endregion 
