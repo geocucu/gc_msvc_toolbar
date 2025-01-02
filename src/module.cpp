@@ -43,26 +43,38 @@ IStream* com_duplicate_stream(IStream *src) {
 struct {
 	vsix::IServiceProvider *provider;
 
-	// == DTE ==
-	vsix::_DTE *dte;
-	vsix::_Solution *sln;
-	vsix::SolutionBuild *sln_build;
+  vsix::IVsSolutionBuildManager *sln_build_manager = 0;
+  vsix::IVsHierarchy *startup_project = 0;
 } vs_services;
 
+struct project_t {
+	wchar_t *name;
+	IStream *stream;
+};
+
 struct {
-	IStream *project_streams[64];
-	int num_projects;
+  project_t projects[64];
+	int num_projects = 0;
+
+	int startup_project_index = -1;
 } sln_state;
 
 // ================================ COMMANDLINE ARGS COMBO BOX ================================
 
 HRESULT on_cmdline_args(VARIANT *in) {
-	// TODO: Use DTE for picking out the Startup Project, since get_StartupProject here will 
-	// break, even with marshaling.
+	// Neither DTE, nor IVs* based get_StartupProject here will work, even with marshaling.
+	// Can't reliably execute on the UI thread either...
+	// So the project list is fixed at initialisation, along with the startup project. 
+
+	vsix::IVsProjectCfg *active_project_cfg = 0;
+	HRCALL(vs_services.sln_build_manager->FindActiveProjectCfg(0, 0, vs_services.startup_project, &active_project_cfg));
+
+	BSTR active_project_cfg_name;
+	active_project_cfg->get_DisplayName(&active_project_cfg_name); // Debug|x64
 	
 	// Do not release!
 	vsix::IVsHierarchy *proj = 0;
-	HRCALL(CoGetInterfaceAndReleaseStream(com_duplicate_stream(sln_state.project_streams[0]), vsix::IID_IVsHierarchy, (void **)&proj));
+	HRCALL(CoGetInterfaceAndReleaseStream(com_duplicate_stream(sln_state.projects[0].stream), vsix::IID_IVsHierarchy, (void **)&proj));
 
 	vsix::IVsBuildPropertyStorage *props = 0;
 	HRCALL(proj->QueryInterface(vsix::IID_IVsBuildPropertyStorage, (void **)&props));
@@ -85,100 +97,92 @@ HRESULT on_cmdline_args(VARIANT *in) {
 HRESULT pkg_on_startup() {
 	// THREAD: VS Main
 
-	// == IVs* interfaces ==
 	vsix::IVsSolution *sln = 0;
 	HRCALL(vs_services.provider->QueryService(&sln));
 
-  // Query startup project by new IVsSolution
-  vsix::IVsSolutionBuildManager *sln_build_mgr = 0;
-  HRCALL(vs_services.provider->QueryService(vsix::IID_IVsSolutionBuildManager, vsix::IID_IVsSolutionBuildManager, (void**)&sln_build_mgr));
-
+	// Save the startup project name for comparison within the enumeration later.
+	// Any failure here is critical, since no updates to the solution are tracked.
+	VARIANT startup_project_name;
+  VariantInit(&startup_project_name);
 	{
+		vsix::IVsSolutionBuildManager *sln_build_mgr = 0;
+		HRCALL(vs_services.provider->QueryService(&sln_build_mgr));
+		
 		vsix::IVsHierarchy *startup_project = 0;
-		HRCALL(sln_build_mgr->get_StartupProject(&startup_project));
+    HRCALL(sln_build_mgr->get_StartupProject(&startup_project));
 
-    vsix::IVsProjectCfg *active_project_cfg = 0;
-    sln_build_mgr->FindActiveProjectCfg(NULL, NULL, startup_project, &active_project_cfg);
+		VARIANT project_type;
+		VariantInit(&project_type); 
 
-		BSTR active_project_cfg_name;
-    active_project_cfg->get_DisplayName(&active_project_cfg_name); // Debug|x64
+		startup_project->GetProperty(VSITEMID_ROOT, vsix::VSHPROPID::VSHPROPID_Name, &startup_project_name);
+		startup_project->GetProperty(VSITEMID_ROOT, vsix::VSHPROPID::VSHPROPID_ProjectType, &project_type);
 
-    vsix::IVsProjectCfgProvider *project_cfg_provider = 0;
-    vsix::IVsBuildableProjectCfg *buildable_project_cfg = 0;
+    if (wcsstr(project_type.bstrVal, L"C++") == 0) {
+      msgbox_hresult(E_FAIL, L"Startup project is not a C++ project.");
+      return E_FAIL;
+    }
 
-    active_project_cfg->get_ProjectCfgProvider(&project_cfg_provider);
-    active_project_cfg->get_BuildableProjectCfg(&buildable_project_cfg);
-
-    VARIANT name, project_type;
-    VariantInit(&name);
-    VariantInit(&project_type); // C++
-
-    startup_project->GetProperty(VSITEMID_ROOT, vsix::VSHPROPID::VSHPROPID_Name, &name);
-    startup_project->GetProperty(VSITEMID_ROOT, vsix::VSHPROPID::VSHPROPID_ProjectType, &project_type);
-
-
-		VariantClear(&name);
-		VariantClear(&project_type); // C++
+		VariantClear(&project_type);
 	}
 
+	// Enumerate all projects in the sln, using IVs* interfaces
+  // Store an index to the startup project by matching names with the previously found startup project 
+	// Any updates to the solution's projects in this session will be ignored at the moment, including: add, rename, remove, change startup
 	vsix::IEnumHierarchies *hierarchies = 0;
 	HRCALL(sln->GetProjectEnum(vsix::VSENUMPROJFLAGS::EPF_ALLPROJECTS, GUID_NULL, &hierarchies));
 
-	vsix::IVsHierarchy *hierarchy = 0;
+	vsix::IVsHierarchy *proj = 0;
 	ULONG fetched = 0;
-	while (hierarchies->Next(1, &hierarchy, &fetched) == S_OK && fetched > 0) {
-		if (!hierarchy) {
+	while (hierarchies->Next(1, &proj, &fetched) == S_OK && fetched > 0) {
+		if (!proj) {
 			continue;
 		}
 
-		HRCALL(CoMarshalInterThreadInterfaceInStream(vsix::IID_IVsHierarchy, (IUnknown *)hierarchy, &sln_state.project_streams[sln_state.num_projects]));
-		sln_state.num_projects++;
-
-		hierarchy->Release();
-	}
-
-	// == Older _DTE ==
-	HRCALL(vs_services.provider->QueryService(&vs_services.dte));
-	HRCALL(vs_services.dte->get_Solution(&vs_services.sln));
-	HRCALL(vs_services.sln->get_SolutionBuild(&vs_services.sln_build));
-
-	VARIANT projects;
-	VariantInit(&projects);
-	vs_services.sln_build->get_StartupProjects(&projects);
-	VariantClear(&projects);
-
-	vsix::SolutionConfigurations *sln_configs = 0;
-	vs_services.sln_build->get_SolutionConfigurations(&sln_configs);
-	long config_count = 0;
-	sln_configs->get_Count(&config_count);
-	for (int i = 0; i < config_count; ++i) {
-		vsix::SolutionConfiguration *cfg = 0;
-		VARIANT idx;
-		VariantInit(&idx);
-		idx.vt = VT_I4;
-		idx.lVal = i + 1;
-		sln_configs->Item(idx, &cfg);
-		BSTR name;
-		cfg->get_Name(&name);
-		VariantClear(&idx);
-
-		vsix::SolutionContexts *sln_contexts;
-		cfg->get_SolutionContexts(&sln_contexts);
-		long sln_contexts_count;
-		sln_contexts->get_Count(&sln_contexts_count);
-    for (int j = 0; j < sln_contexts_count; ++j) {
-      vsix::SolutionContext *ctx = 0;
-      VARIANT idx;
-      VariantInit(&idx);
-      idx.vt = VT_I4;
-      idx.lVal = j + 1;
-      sln_contexts->Item(idx, &ctx);
-			BSTR platform_name, cfg_name, proj_name;
-      ctx->get_PlatformName(&platform_name); // x64
-      ctx->get_ConfigurationName(&cfg_name); // Debug
-      ctx->get_ProjectName(&proj_name);      // List of projects with x64|Debug
+    // Fixed limit of 64 projects
+    if (sln_state.num_projects >= 64) {
+      MessageBoxW(0, L"Too many projects in the solution. Max supported: 64.", L"[Warning] " PROJECT_NAME, MB_ICONWARNING | MB_OK);
+      break;
     }
-	}
+
+		VARIANT name;
+    VariantInit(&name);
+		proj->GetProperty(VSITEMID_ROOT, vsix::VSHPROPID::VSHPROPID_ProjectName, &name);
+
+		// Ignore non-C++ projects
+		VARIANT type;
+    VariantInit(&type);
+		proj->GetProperty(VSITEMID_ROOT, vsix::VSHPROPID::VSHPROPID_ProjectType, &type);
+		if (wcsstr(type.bstrVal, L"C++")) {
+			// Serialise IVsHierarchy to IStream for GetPropertyValue/SetPropertyValue from non-UI thread calls later
+			IStream *stream = 0;
+			HRCALL(CoMarshalInterThreadInterfaceInStream(vsix::IID_IVsHierarchy, (IUnknown *)proj, &stream));
+
+			sln_state.projects[sln_state.num_projects++] = {
+				.name = name.bstrVal,
+				.stream = stream
+			};
+
+			if (wcscmp(name.bstrVal, startup_project_name.bstrVal) == 0) {
+				sln_state.startup_project_index = sln_state.num_projects - 1;
+			}
+    }
+		else {
+      VariantClear(&name);
+		}
+
+    VariantClear(&type);
+		proj->Release();
+  }
+
+  if (sln_state.startup_project_index == -1) {
+    msgbox_hresult(E_FAIL, L"Startup project not found in the solution.");
+    return E_FAIL;
+  }
+
+  VariantClear(&startup_project_name);
+
+	HRCALL(vs_services.provider->QueryService(&vs_services.sln_build_manager));
+	HRCALL(vs_services.sln_build_manager->get_StartupProject(&vs_services.startup_project));
 
 	return S_OK;
 }

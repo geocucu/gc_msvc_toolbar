@@ -284,9 +284,9 @@ namespace vsix {
     virtual HRESULT __stdcall QueryClose(BOOL *pfCanClose) = 0;
     virtual HRESULT __stdcall Close() = 0;
     virtual HRESULT __stdcall GetAutomationObject(const wchar_t *prop_name, IDispatch **dispatch) = 0;
-    virtual HRESULT __stdcall CreateTool(REFGUID rguidPersistenceSlot) = 0;
+    virtual HRESULT __stdcall CreateTool(const GUID &rguidPersistenceSlot) = 0;
     virtual HRESULT __stdcall ResetDefaults(VSPKGRESETFLAGS grfFlags) = 0;
-    virtual HRESULT __stdcall GetPropertyPage(REFGUID rguidPage, VSPROPSHEETPAGE *ppage) = 0;
+    virtual HRESULT __stdcall GetPropertyPage(const GUID &rguidPage, VSPROPSHEETPAGE *ppage) = 0;
   };
 #pragma endregion
 
@@ -5740,7 +5740,7 @@ struct __declspec(novtable) IVsTrackProjectDocuments3 {
     virtual HRESULT __stdcall get_Parent(DTE **pDTE) = 0;
     virtual HRESULT __stdcall Clear() = 0;
     virtual HRESULT __stdcall Animate(VARIANT_BOOL On, VARIANT AnimationType) = 0;
-    virtual HRESULT __stdcall Progress(VARIANT_BOOL InProgress, BSTR Label = L"", long AmountCompleted = 0, long Total = 0) = 0;
+    virtual HRESULT __stdcall Progress(VARIANT_BOOL InProgress, BSTR Label, long AmountCompleted = 0, long Total = 0) = 0;
     virtual HRESULT __stdcall SetXYWidthHeight(long X, long Y, long Width, long Height) = 0;
     virtual HRESULT __stdcall SetLineColumnCharacter(long Line, long Column, long Character) = 0;
     virtual HRESULT __stdcall put_Text(BSTR Text) = 0;
@@ -7638,7 +7638,7 @@ struct __declspec(novtable) IVsTrackProjectDocuments3 {
     virtual HRESULT __stdcall put_Saved(VARIANT_BOOL SavedFlag) = 0;
     virtual HRESULT __stdcall get_ConfigurationManager(ConfigurationManager **ppConfigurationManager) = 0;
     virtual HRESULT __stdcall get_FileCodeModel(FileCodeModel **ppFileCodeModel) = 0;
-    virtual HRESULT __stdcall Save(BSTR FileName = L"") = 0;
+    virtual HRESULT __stdcall Save(BSTR FileName) = 0;
     virtual HRESULT __stdcall get_Document(Document **ppDocument) = 0;
     virtual HRESULT __stdcall get_SubProject(Project **ppProject) = 0;
     virtual HRESULT __stdcall get_ContainingProject(Project **ppProject) = 0;
@@ -8081,7 +8081,7 @@ struct __declspec(novtable) IVsTrackProjectDocuments3 {
     virtual HRESULT __stdcall put_Saved(VARIANT_BOOL SavedFlag) = 0;
     virtual HRESULT __stdcall get_ConfigurationManager(ConfigurationManager **ppConfigurationManager) = 0;
     virtual HRESULT __stdcall get_Globals(Globals **ppGlobals) = 0;
-    virtual HRESULT __stdcall Save(BSTR FileName = L"") = 0;
+    virtual HRESULT __stdcall Save(BSTR FileName) = 0;
     virtual HRESULT __stdcall get_ParentProjectItem(ProjectItem **ppParentProjectItem) = 0;
     virtual HRESULT __stdcall get_CodeModel(CodeModel **ppCodeModel) = 0;
     virtual HRESULT __stdcall Delete() = 0;
@@ -8263,6 +8263,10 @@ struct __declspec(novtable) IVsTrackProjectDocuments3 {
     // == Overloaded QueryService methods ==
     HRESULT QueryService(IVsSolution **result) {
       return QueryService(IID_IVsSolution, IID_IVsSolution, (void **)result);
+    }
+
+    HRESULT QueryService(IVsSolutionBuildManager **result) {
+      return QueryService(IID_IVsSolutionBuildManager, IID_IVsSolutionBuildManager, (void **)result);
     }
 
     HRESULT QueryService(_DTE **result) {

@@ -103,7 +103,7 @@ static void msgbox_hresult(HRESULT hr, const wchar_t *format, ...) {
 	wchar_t error_msg[2048] = {};
 	wchar_t system_message[512] = {};
 	wchar_t custom_message[512] = {};
-	wchar_t callstack[2048] = {};
+	wchar_t callstack[4096] = {};
 
 	// Get the system error message for the HRESULT
 	FormatMessageW(
