@@ -5,6 +5,34 @@
 #include "..\res\resource.h"
 #include "debug_helper.h"
 
+// ================================ UTILS ================================
+struct command_args_t {
+	VARIANT in;
+
+	command_args_t() {
+		VariantInit(&in);
+	}
+
+	command_args_t(VARIANT *raw_in) {
+		VariantInit(&in);
+		VariantCopy(&in, raw_in);
+	}
+
+	~command_args_t() {
+		VariantClear(&in);
+	}
+};
+
+static inline bool vsproj_is_cpp(vsix::IVsHierarchy *proj) {
+  // THREAD: VS Main
+
+  VARIANT type;
+  VariantInit(&type);
+  proj->GetProperty(VSITEMID_ROOT, vsix::VSHPROPID::VSHPROPID_ProjectType, &type);
+  bool is_cpp = wcsstr(type.bstrVal, L"C++") != 0;
+  VariantClear(&type);
+  return is_cpp;
+}
 
 // ================================ DATA ================================
 struct {
@@ -14,23 +42,6 @@ struct {
 	HWND main_hwnd;
 	WNDPROC main_wndproc;
 } vs_services;
-
-struct command_args_t {
-	VARIANT in;
-
-  command_args_t() {
-    VariantInit(&in);
-  }
-
-  command_args_t(VARIANT *raw_in) {
-    VariantInit(&in);
-    VariantCopy(&in, raw_in);
-  }
-
-	~command_args_t() {
-		VariantClear(&in);
-	}
-};
 
 // ================================ COMMANDLINE ARGS COMBO BOX ================================
 #define WM_CMDLINE_ARGS (WM_USER + 1)
@@ -47,12 +58,10 @@ HRESULT on_cmdline_args(command_args_t *args) {
 	vsix::IVsHierarchy *startup_project = 0;
 	HRCALL(sln_build_manager->get_StartupProject(&startup_project));
 
-	VARIANT name, type;
+	VARIANT name;
 	VariantInit(&name);
-	VariantInit(&type);
-	HRCALL(startup_project->GetProperty(VSITEMID_ROOT, vsix::VSHPROPID::VSHPROPID_ProjectType, &type));
 	HRCALL(startup_project->GetProperty(VSITEMID_ROOT, vsix::VSHPROPID::VSHPROPID_Name, &name));
-	bool is_cpp = wcsstr(type.bstrVal, L"C++") != 0;
+	bool is_cpp = vsproj_is_cpp(startup_project);
 
 	vsix::IVsProjectCfg *active_project_cfg = 0;
 	HRCALL(sln_build_manager->FindActiveProjectCfg(0, 0, startup_project, &active_project_cfg));
@@ -70,7 +79,6 @@ HRESULT on_cmdline_args(command_args_t *args) {
 		args->in.bstrVal));
 
 	VariantClear(&name);
-	VariantClear(&type);
 	SysFreeString(active_project_cfg_name);
 	active_project_cfg->Release();
 	props->Release();
@@ -81,24 +89,88 @@ HRESULT on_cmdline_args(command_args_t *args) {
   return S_OK;
 }
 
+HRESULT on_update_sln_state() {
+  // THREAD: VS Main
+  
+  // Set the combo box to the Startup Project's commandline args.
+  // If the project is not a C++ project, set the combo box to "N/A".
+	
+	vsix::IVsSolution *sln = 0;
+  HRCALL(vs_services.provider->QueryService(&sln));
+  vsix::IVsSolutionBuildManager *sln_build_manager = 0;
+  HRCALL(vs_services.provider->QueryService(&sln_build_manager));
+  vsix::IVsHierarchy *startup_project = 0;
+  HRCALL(sln_build_manager->get_StartupProject(&startup_project));
+
+  bool is_cpp = vsproj_is_cpp(startup_project);
+
+	BSTR cmdline_args;
+	if (is_cpp) {
+		vsix::IVsProjectCfg *active_project_cfg = 0;
+		HRCALL(sln_build_manager->FindActiveProjectCfg(0, 0, startup_project, &active_project_cfg));
+		BSTR active_project_cfg_name;
+		active_project_cfg->get_DisplayName(&active_project_cfg_name); // E.g. Debug|x64
+		vsix::IVsBuildPropertyStorage *props = 0;
+		HRCALL(startup_project->QueryInterface(vsix::IID_IVsBuildPropertyStorage, (void **)&props));
+
+    HRCALL(props->GetPropertyValue(
+      L"LocalDebuggerCommandArguments",
+      active_project_cfg_name,
+      vsix::PST_USER_FILE,
+      &cmdline_args));
+
+    SysFreeString(active_project_cfg_name);
+    active_project_cfg->Release();
+    props->Release();
+	}
+	else {
+    cmdline_args = SysAllocString(L"N/A");
+	}
+
+	vs_services.vs_ui_shell->SetMRUComboTextW(&CLSID_cmdset, CMDID_cmdline_args_control, cmdline_args, true);
+
+  SysFreeString(cmdline_args);
+  startup_project->Release();
+  sln_build_manager->Release();
+  sln->Release();
+
+  return S_OK;
+}
+
 // ================================ BOILERPLATE CONNECTION POINTS (START HERE) ================================
 #pragma region
+
+#define TIMER_UPDATE_SLN_STATE 0x1000000
 
 LRESULT __stdcall VS_Main_WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	// THREAD: VS Main
 
+	if (msg == WM_TIMER && wparam == TIMER_UPDATE_SLN_STATE) {
+		on_update_sln_state();
+		return 0;
+	}
+
   if (msg > WM_USER) {
     command_args_t *args = (command_args_t *)lparam;
 
+		bool handled = true;
     if (msg == WM_CMDLINE_ARGS) {
       on_cmdline_args(args);
     }
     // else if (msg == ...) {
     //   ...
     // }
+		else {
+			handled = false;
+		}
 
-		delete args;
-    return 0;
+    if (handled) {
+      delete args;
+			return 0;	
+    }
+		else {
+      return CallWindowProcW(vs_services.main_wndproc, hwnd, msg, wparam, lparam);
+		}
   }
 
   return CallWindowProcW(vs_services.main_wndproc, hwnd, msg, wparam, lparam);
@@ -181,6 +253,10 @@ struct pkg_t : vsix::IVsPackage, IOleCommandTarget {
 		// TODO: Check if it would be better to take over only temporarily:
 		//       Restore original after processing, then take over again whenever needed.
 		vs_services.main_wndproc = (WNDPROC)SetWindowLongPtrW(vs_services.main_hwnd, GWLP_WNDPROC, (LONG_PTR)VS_Main_WndProc);
+
+		// The Advise...Event functions are a mess.
+		// Just query the sln state at coarse regular intervals, say 5 seconds.
+    SetTimer(vs_services.main_hwnd, TIMER_UPDATE_SLN_STATE, 5000, 0);
 
 		HRCALL(pkg_on_startup());
 

@@ -3201,7 +3201,7 @@ struct __declspec(novtable) IVsTrackProjectDocuments3 {
   const GUID IID_IVsUpdateSolutionEvents3 = { 0x40025c28, 0x3303, 0x42ca, { 0xbe, 0xd8, 0x0f, 0x3b, 0xd8, 0x56, 0xbd, 0x6d } };
 
   // Defines events for changes in the solution configuration. 
-  // To monitor these events, implement the interface and use it as an argument to IVsSolutionBuildManager3.AdviseUpdateSolutionEvents3
+  // To monitor these events, implement the interface and use it as an argument to IVsSolutionBuildManager3::AdviseUpdateSolutionEvents3
   struct __declspec(novtable) IVsUpdateSolutionEvents3 {
     // == IUnknown ==
     virtual HRESULT __stdcall QueryInterface(const IID &riid, void **ppvObject) = 0;
