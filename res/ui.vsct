@@ -38,7 +38,8 @@
       <Parent guid="GUID_cmdset" id="CID_toolbar_group" />
       <CommandFlag>StretchHorizontally</CommandFlag>
       <Strings>
-        <ButtonText>None</ButtonText>
+        <!-- Appears in the drop-down with commands to include in the toolbar. Use Title Case. -->
+        <ButtonText>Debugger Cmdline Args</ButtonText>
       </Strings>
     </Combo>
   </Combos>

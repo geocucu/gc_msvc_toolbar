@@ -3448,6 +3448,18 @@ struct __declspec(novtable) IVsTrackProjectDocuments3 {
     virtual HRESULT __stdcall get_StartupProject(IVsHierarchy **ppHierarchy) = 0;
     virtual HRESULT __stdcall set_StartupProject(IVsHierarchy *pHierarchy) = 0;
     virtual HRESULT __stdcall GetProjectDependencies(IVsHierarchy *pHier, ULONG celt, IVsHierarchy *rgpHier[], ULONG *pcActual) = 0;
+
+    // == Utils ==
+
+    // Name format example: Debug|x64
+    HRESULT get_ActiveProjectCfg_name(IVsHierarchy *proj, wchar_t **name) {
+      IVsProjectCfg *cfg;
+      HRESULT hr = FindActiveProjectCfg(0, 0, proj, &cfg);
+      if (FAILED(hr)) return hr;
+      hr = cfg->get_DisplayName(name);
+      cfg->Release();
+      return hr;
+    }
   };
 #pragma endregion
 
@@ -4544,6 +4556,11 @@ struct __declspec(novtable) IVsTrackProjectDocuments3 {
     UNUSED_FUNC(2)
     UNUSED_FUNC(3)
     UNUSED_FUNC(4)
+
+    // == Utils ==
+    HRESULT get_BuildPropertyStorage(IVsBuildPropertyStorage **ppStorage) {
+      return QueryInterface(IID_IVsBuildPropertyStorage, (void **)ppStorage);
+    }
   };
 #pragma endregion
 

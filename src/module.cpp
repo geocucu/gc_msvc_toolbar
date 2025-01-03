@@ -23,18 +23,57 @@ struct command_args_t {
 	}
 };
 
+// Not meant to be a robust solution, just a quick and dirty way to manage COM/OLE (and related) objects in bulk, without individual RAII wrappers.
+struct IUnknown_scope_t {
+	IUnknown **objs;
+	int count = 0;
+	int capacity = 0;
+
+	IUnknown_scope_t() {
+    objs = (IUnknown **)calloc(32, sizeof(IUnknown *));
+    capacity = 32;
+	}
+
+	~IUnknown_scope_t() {
+		for (int i = count - 1; i >= 0; --i) {
+			if (objs[i]) {
+        objs[i]->Release();
+			}
+		}
+	}
+
+  IUnknown* next() {
+    if (count == capacity) {
+      capacity *= 2;
+      objs = (IUnknown **)realloc(objs, capacity * sizeof(IUnknown *));
+    }
+
+    return objs[count++];
+  }
+};
+
+struct VARIANT_RTTI_t : VARIANT {
+  VARIANT_RTTI_t() { VariantInit(this); }
+  ~VARIANT_RTTI_t() { VariantClear(this); }
+};
+
+struct BSTR_RTTI_t {
+	wchar_t *val;
+  BSTR_RTTI_t() { val = 0; }
+	~BSTR_RTTI_t() { val ? SysFreeString(val) : void(0); }
+};
+
 static inline bool vsproj_is_cpp(vsix::IVsHierarchy *proj) {
   // THREAD: VS Main
 
-  VARIANT type;
-  VariantInit(&type);
+  VARIANT_RTTI_t type;
   proj->GetProperty(VSITEMID_ROOT, vsix::VSHPROPID::VSHPROPID_ProjectType, &type);
-  bool is_cpp = wcsstr(type.bstrVal, L"C++") != 0;
-  VariantClear(&type);
-  return is_cpp;
+  return wcsstr(type.bstrVal, L"C++") != 0;
 }
 
 // ================================ DATA ================================
+
+// Safe to store for the entire session, unlike e.g. Solution/Project references.
 struct {
 	vsix::IServiceProvider *provider;
 
@@ -44,95 +83,89 @@ struct {
 } vs_services;
 
 // ================================ COMMANDLINE ARGS COMBO BOX ================================
-#define WM_CMDLINE_ARGS (WM_USER + 1)
+// 0x0400 to 0x7FFF
+#define WM_CMDLINE_ARGS (0x7000 + 1)
+
+// First update seems okay; anything after that clears the combo box text.
+wchar_t last_cmdline_args[256];
 
 HRESULT on_cmdline_args(command_args_t *args) {
   // THREAD: VS Main
 
-	vsix::IVsSolution *sln = 0;
+  IUnknown_scope_t com_objs;
+
+  auto sln = (vsix::IVsSolution*)com_objs.next();
+	auto sln_build_manager = (vsix::IVsSolutionBuildManager *)com_objs.next();
+	auto startup_project = (vsix::IVsHierarchy *)com_objs.next();
+	auto active_project_cfg = (vsix::IVsProjectCfg *)com_objs.next();
+	auto props = (vsix::IVsBuildPropertyStorage *)com_objs.next();
+  VARIANT_RTTI_t startup_project_name;
+  BSTR_RTTI_t active_project_cfg_name;
+
 	HRCALL(vs_services.provider->QueryService(&sln));
-
-	vsix::IVsSolutionBuildManager *sln_build_manager = 0;
 	HRCALL(vs_services.provider->QueryService(&sln_build_manager));
-
-	vsix::IVsHierarchy *startup_project = 0;
 	HRCALL(sln_build_manager->get_StartupProject(&startup_project));
 
-	VARIANT name;
-	VariantInit(&name);
-	HRCALL(startup_project->GetProperty(VSITEMID_ROOT, vsix::VSHPROPID::VSHPROPID_Name, &name));
-	bool is_cpp = vsproj_is_cpp(startup_project);
+	HRCALL(startup_project->GetProperty(VSITEMID_ROOT, vsix::VSHPROPID::VSHPROPID_Name, &startup_project_name));
+	if (!vsproj_is_cpp(startup_project)) {
+    return S_OK; // No error, but nothing to do either (non-C++ project).
+	}
 
-	vsix::IVsProjectCfg *active_project_cfg = 0;
-	HRCALL(sln_build_manager->FindActiveProjectCfg(0, 0, startup_project, &active_project_cfg));
+  sln_build_manager->get_ActiveProjectCfg_name(startup_project, &active_project_cfg_name.val);
 
-	BSTR active_project_cfg_name;
-	active_project_cfg->get_DisplayName(&active_project_cfg_name); // E.g. Debug|x64
-
-	vsix::IVsBuildPropertyStorage *props = 0;
-	HRCALL(startup_project->QueryInterface(vsix::IID_IVsBuildPropertyStorage, (void **)&props));
+  HRCALL(startup_project->get_BuildPropertyStorage(&props));
 
 	HRCALL(props->SetPropertyValue(
 		L"LocalDebuggerCommandArguments",
-		active_project_cfg_name,
+		active_project_cfg_name.val,
 		vsix::PST_USER_FILE,
 		args->in.bstrVal));
 
-	VariantClear(&name);
-	SysFreeString(active_project_cfg_name);
-	active_project_cfg->Release();
-	props->Release();
-	startup_project->Release();
-	sln_build_manager->Release();
-	sln->Release();
+  wcscpy_s(last_cmdline_args, args->in.bstrVal);
 
   return S_OK;
 }
 
+// TODO: Figure out how to do the initial "wake up".
 HRESULT on_update_sln_state() {
   // THREAD: VS Main
   
   // Set the combo box to the Startup Project's commandline args.
   // If the project is not a C++ project, set the combo box to "N/A".
 	
-	vsix::IVsSolution *sln = 0;
+  IUnknown_scope_t com_objs;
+
+  auto sln = (vsix::IVsSolution *)com_objs.next();
+  auto sln_build_manager = (vsix::IVsSolutionBuildManager *)com_objs.next();
+  auto startup_project = (vsix::IVsHierarchy *)com_objs.next();
+  auto props = (vsix::IVsBuildPropertyStorage *)com_objs.next();
+  BSTR_RTTI_t active_project_cfg_name;
+
   HRCALL(vs_services.provider->QueryService(&sln));
-  vsix::IVsSolutionBuildManager *sln_build_manager = 0;
   HRCALL(vs_services.provider->QueryService(&sln_build_manager));
-  vsix::IVsHierarchy *startup_project = 0;
   HRCALL(sln_build_manager->get_StartupProject(&startup_project));
 
   bool is_cpp = vsproj_is_cpp(startup_project);
 
-	BSTR cmdline_args;
+  //BSTR_RTTI_t cmdline_args;
+  wchar_t *cmdline_args = 0; // Do not free this here (or wrap in the automatic com_objs block). Leave it to VS.
 	if (is_cpp) {
-		vsix::IVsProjectCfg *active_project_cfg = 0;
-		HRCALL(sln_build_manager->FindActiveProjectCfg(0, 0, startup_project, &active_project_cfg));
-		BSTR active_project_cfg_name;
-		active_project_cfg->get_DisplayName(&active_project_cfg_name); // E.g. Debug|x64
-		vsix::IVsBuildPropertyStorage *props = 0;
-		HRCALL(startup_project->QueryInterface(vsix::IID_IVsBuildPropertyStorage, (void **)&props));
-
+    HRCALL(sln_build_manager->get_ActiveProjectCfg_name(startup_project, &active_project_cfg_name.val));
+    HRCALL(startup_project->get_BuildPropertyStorage(&props));
     HRCALL(props->GetPropertyValue(
       L"LocalDebuggerCommandArguments",
-      active_project_cfg_name,
+      active_project_cfg_name.val,
       vsix::PST_USER_FILE,
       &cmdline_args));
-
-    SysFreeString(active_project_cfg_name);
-    active_project_cfg->Release();
-    props->Release();
 	}
 	else {
     cmdline_args = SysAllocString(L"N/A");
 	}
 
-	vs_services.vs_ui_shell->SetMRUComboTextW(&CLSID_cmdset, CMDID_cmdline_args_control, cmdline_args, true);
-
-  SysFreeString(cmdline_args);
-  startup_project->Release();
-  sln_build_manager->Release();
-  sln->Release();
+  if (wcscmp(last_cmdline_args, cmdline_args) != 0) {
+		vs_services.vs_ui_shell->SetMRUComboTextW(&CLSID_cmdset, CMDID_cmdline_args_control, cmdline_args, true);
+    wcscpy_s(last_cmdline_args, cmdline_args);
+  }
 
   return S_OK;
 }
@@ -140,7 +173,7 @@ HRESULT on_update_sln_state() {
 // ================================ BOILERPLATE CONNECTION POINTS (START HERE) ================================
 #pragma region
 
-#define TIMER_UPDATE_SLN_STATE 0x1000000
+#define TIMER_UPDATE_SLN_STATE 0x01000000
 
 LRESULT __stdcall VS_Main_WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	// THREAD: VS Main
@@ -181,7 +214,7 @@ static HRESULT pkg_command_map(const GUID &cmdset_id, DWORD cmd_id, DWORD flags,
 	//         ^^^ can only go wild here 
 
 	command_args_t *args = new command_args_t(in);
-	bool post_ok = true;
+	bool post_ok = false;
 	if (InlineIsEqualGUID(cmdset_id, CLSID_cmdset) && cmd_id == CMDID_cmdline_args_control) {
     post_ok = PostMessageW(vs_services.main_hwnd, WM_CMDLINE_ARGS, 0, (LPARAM)args);
 	}
@@ -191,10 +224,11 @@ static HRESULT pkg_command_map(const GUID &cmdset_id, DWORD cmd_id, DWORD flags,
 
   if (!post_ok) {
     delete args;
-    return HRESULT_FROM_WIN32(GetLastError());
+		return OLECMDERR_E_NOTSUPPORTED;
+		//return HRESULT_FROM_WIN32(GetLastError());
   }
 
-	return OLECMDERR_E_NOTSUPPORTED;
+  return S_OK;
 }
 
 // Init VSPackage
@@ -281,7 +315,8 @@ struct pkg_t : vsix::IVsPackage, IOleCommandTarget {
 	HRESULT __stdcall QueryStatus(const GUID *pCmdGroupGuid, ULONG cCmds, OLECMD pCmds[], OLECMDTEXT *pCmdText) override { return E_NOTIMPL; }
 
 	HRESULT __stdcall Exec(const GUID *pCmdGroupGuid, DWORD nCmdID, DWORD nCmdexecopt, VARIANT *in, VARIANT *out) override {
-		return pkg_command_map(*pCmdGroupGuid, nCmdID, nCmdexecopt, in, out);
+		HRCALL(pkg_command_map(*pCmdGroupGuid, nCmdID, nCmdexecopt, in, out));
+    return S_OK;
 	}
 
 	// ==== Factory ====
